@@ -1,0 +1,6 @@
+set(SOURCE_FILES
+    ${SOURCE_FILES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Interpreter.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Interpreter.cc
+    PARENT_SCOPE
+)
