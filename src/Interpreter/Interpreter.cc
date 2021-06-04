@@ -1,5 +1,5 @@
-#include <iostream>
+#include "Interpreter.hpp"
 
-void Interpreter() {
-  std::cout << "Interpreter" << std::endl;
-}
+void Interpreter::Interpret() const {}
+
+Interpreter interpreter;

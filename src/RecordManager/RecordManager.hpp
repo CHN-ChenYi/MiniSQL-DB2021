@@ -1,3 +1,5 @@
 #pragma once
 
-void RecordManager();
+#include "DataStructure.hpp"
+
+class RecordBlock : public Block {};

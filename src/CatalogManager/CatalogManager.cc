@@ -1,5 +1,3 @@
-#include <iostream>
+#include "CatalogManager.hpp"
 
-void CatalogManager() {
-  std::cout << "CatalogManager" << std::endl;
-}
+CatalogManager catalog_manager;
