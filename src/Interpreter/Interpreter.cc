@@ -40,7 +40,6 @@ void Interpreter::Interpret() {
     try {
       parseCreateTable();
     } catch (...) {
-      throw;
     }
   }
 }
@@ -137,7 +136,10 @@ void Interpreter::parseConstraint() {
       spec = SpecialAttribute::PrimaryKey;
     }
   }
-  if (!found) throw std::runtime_error("no such attribute");
+  if (!found) {
+    cerr << "no such attribute" << endl;
+    throw std::runtime_error("constraint failed");
+  }
   expect(")");
 }
 
@@ -155,18 +157,22 @@ void Interpreter::parseAttributeList() {
 
 void Interpreter::parseNumber() {
   skipSpace();
-  if (iter == input.end()) throw std::runtime_error("reach end of input");
-  char *end = nullptr;
-  auto val = strtod(&*iter, &end);
-  if (end == &*iter) throw std::runtime_error("reach end of input");
-  iter += end - &*iter;
-  cur_tok = Token{
-      .kind = TokenKind::Num,
-      .sv = ""sv,
-      .f = val,
-      .i = static_cast<int64_t>(val),
-  };
-  return;
+  if (iter != input.end()) {
+    char *end = nullptr;
+    auto val = strtod(&*iter, &end);
+    if (end != &*iter) {
+      iter += end - &*iter;
+      cur_tok = Token{
+          .kind = TokenKind::Num,
+          .sv = ""sv,
+          .f = val,
+          .i = static_cast<int64_t>(val),
+      };
+      return;
+    }
+  }
+  cerr << "expect a number" << endl;
+  throw std::runtime_error("can't find expected token");
 }
 
 void Interpreter::parseId() {
