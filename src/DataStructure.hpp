@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -21,6 +22,8 @@ const int kMaxBlockNum = 128;
 #endif
 }  // namespace Config
 
+enum struct Operator { GT, GE, LT, LE, EQ, NE };
+
 enum struct SqlValueTypeBase { Integer, Float, String };
 typedef unsigned SqlValueType;  // if >= SqlValueTypeBase::String, it means
                                 // char(val - SqlValueTypeBase::String)
@@ -32,6 +35,44 @@ struct SqlValue {
     float Float;
     string String;
   } val;
+  bool operator<(const SqlValue &rhs) const {
+    if (type != rhs.type)
+      throw std::invalid_argument("comparison between different SqlValueType");
+    if (type == static_cast<SqlValueType>(SqlValueTypeBase::Integer)) {
+      return val.Integer < rhs.val.Integer;
+    } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
+      return val.Float < rhs.val.Float;
+    } else {
+      return val.String < rhs.val.String;
+    }
+  };
+  bool operator==(const SqlValue &rhs) const {
+    if (type != rhs.type)
+      throw std::invalid_argument("comparison between different SqlValueType");
+    if (type == static_cast<SqlValueType>(SqlValueTypeBase::Integer)) {
+      return val.Integer == rhs.val.Integer;
+    } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
+      return val.Float == rhs.val.Float;
+    } else {
+      return val.String == rhs.val.String;
+    }
+  }
+  bool Compare(const Operator &op, const SqlValue &rhs) const {
+    switch (op) {
+      case Operator::GT:
+        return rhs < *this;
+      case Operator::GE:
+        return rhs < *this || rhs == *this;
+      case Operator::LT:
+        return *this < rhs;
+      case Operator::LE:
+        return *this < rhs || *this == rhs;
+      case Operator::EQ:
+        return *this == rhs;
+      case Operator::NE:
+        return !(*this == rhs);
+    }
+  }
 };
 
 struct Tuple {
@@ -78,8 +119,6 @@ struct Block {
 struct Position {
   size_t block_id, offset;
 };
-
-enum struct Operator { GT, GE, LT, LE, EQ, NE };
 
 struct Condition {
   string attribute;
