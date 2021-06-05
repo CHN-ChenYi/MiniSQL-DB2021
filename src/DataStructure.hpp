@@ -14,7 +14,11 @@ using std::vector;
 
 namespace Config {
 const int kBlockSize = 4096;
+#ifdef _DEBUG
+const int kMaxBlockNum = 2;
+#else
 const int kMaxBlockNum = 128;
+#endif
 }  // namespace Config
 
 enum struct SqlValueTypeBase { Integer, Float, String };
@@ -43,13 +47,20 @@ struct Table {
   unordered_map<string, string> indexes;  // attribute name, index name
 };
 
-class Block {
-  bool dirty_;
+struct Block {
   char val_[Config::kBlockSize];
-
- public:
+  bool dirty_, pin_;  // CAUTION: set dirty_ to true after modification
   Block() = default;
   virtual ~Block() = default;
+  /**
+   * @brief Get the filename of a block by block_id
+   *
+   * @param block_id the id of the block
+   * @return the filename
+   */
+  static string GetBlockFilename(size_t block_id) {
+    return std::to_string(block_id) + ".block";
+  };
   /**
    * @brief read raw data from ifstream
    *
@@ -61,7 +72,7 @@ class Block {
    *
    * @param os the ofstream
    */
-  void write(ofstream &os) { os.write(val_, Config::kBlockSize); }
+  void write(ofstream &os) const { os.write(val_, Config::kBlockSize); }
 };
 
 struct Position {

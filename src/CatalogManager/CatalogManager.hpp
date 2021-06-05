@@ -2,7 +2,7 @@
 
 #include "DataStructure.hpp"
 
-class CatalogBlock : public Block {};
+struct CatalogBlock : public Block {};
 
 class CatalogManager {};
 
