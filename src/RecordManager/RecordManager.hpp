@@ -2,4 +2,4 @@
 
 #include "DataStructure.hpp"
 
-class RecordBlock : public Block {};
+struct RecordBlock : public Block {};
