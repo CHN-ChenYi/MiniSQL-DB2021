@@ -2,7 +2,7 @@
 
 void CreateTable(
     const string &table_name,
-    const vector<tuple<SqlValueType, SpecialAttribute>> &attributes) {}
+    const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes) {}
 
 void DropTable(const string &table_name) {}
 

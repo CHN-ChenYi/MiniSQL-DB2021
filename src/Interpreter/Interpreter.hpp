@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -6,15 +7,16 @@
 #include <unordered_set>
 #include <utility>
 
+#include "API.hpp"
+
 class Interpreter {
  public:
-  using InputType = std::string_view;
   /**
    * @brief Read commands from stdin, interpret them and then execute them by
    * API module. Return when user quits.
    *
    */
-  void Interpret() const;
+  void Interpret();
 
  private:
   /*
@@ -33,8 +35,7 @@ class Interpreter {
     CmpOp,
     ArithOp,
     Space,
-    INum,
-    RNum,
+    Num,
     Id,
     StrLit,
     Path,
@@ -42,32 +43,37 @@ class Interpreter {
 
   struct Token {
     TokenKind kind;
-    union {
-      double f;
-      int i;
-      InputType sv;
-    };
+    std::string_view sv;
+    double f;
+    std::int64_t i;
   };
 
-  static inline constexpr Token TokenNone = Token{.kind = TokenKind::None, .sv = ""};
+  static inline constexpr Token TokenNone =
+      Token{.kind = TokenKind::None, .sv = "", .f = 0.0, .i = 0};
 
-  using ParserState = std::tuple<bool, Token, InputType>;
+  Token cur_tok, table_name;
+  std::string input;
+  std::string::iterator iter;
+  std::vector<tuple<string, SqlValueType, SpecialAttribute>> cur_attributes;
 
-  void handleError(std::string_view msg, InputType pos) const;
-  ParserState skipSpace(InputType input) const;
-  ParserState expect(std::string_view lit, InputType input) const;
-  ParserState peek(std::string_view lit, InputType input) const;
-  ParserState parseNumber(InputType input) const;
-  ParserState parseId(InputType input) const;
-  ParserState parsePath(InputType input) const;
-  ParserState parseCreateTable(InputType input) const;
-  ParserState parseCreateIndex(InputType input) const;
-  ParserState parseSelectStat(InputType input) const;
-  ParserState parseDeleteStat(InputType input) const;
-  ParserState parseInsertStat(InputType input) const;
-  ParserState parseDropTable(InputType input) const;
-  ParserState parseDropIndex(InputType input) const;
-  ParserState parseExec(InputType input) const;
+  void skipSpace();
+  void expect(std::string_view s);
+  bool peek(std::string_view s);
+  bool consume(std::string_view s);
+  void skip(std::string_view s);
+  void parseAttributeList();
+  void parseAttribute();
+  void parseConstraint();
+  void parseNumber();
+  void parseId();
+  void parseCreateTable();
+  void parseCreateIndex();
+  void parseSelectStat();
+  void parseDeleteStat();
+  void parseInsertStat();
+  void parseDropTable();
+  void parseDropIndex();
+  void parseExec();
 };
 
 extern Interpreter interpreter;

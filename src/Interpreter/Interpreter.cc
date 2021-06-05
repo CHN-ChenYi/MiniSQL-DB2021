@@ -2,114 +2,209 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <cctype>
+#include <cstring>
+#include <exception>
 #include <iostream>
 #include <iterator>
-#include <regex>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+
+#include "API.hpp"
+#include "DataStructure.hpp"
 
 using std::cerr;
+using std::cin;
+using std::cout;
 using std::endl;
+using std::int64_t;
 using std::isalnum;
 using std::isalpha;
-using std::min;
+using std::isspace;
+using std::string;
 using std::string_view;
+using std::strtod;
+using std::vector;
 
 using namespace std::literals;
 
-void Interpreter::Interpret() const {}
-
-void Interpreter::handleError(std::string_view msg, InputType pos) const {
-  cerr << msg << endl;
-}
-
-Interpreter::ParserState Interpreter::skipSpace(
-    Interpreter::InputType input) const {
-  input.remove_prefix(min(input.find_first_not_of(" \n\r\t"), input.size()));
-  return {true, TokenNone, input};
-}
-
-Interpreter::ParserState Interpreter::expect(
-    string_view lit, Interpreter::InputType input) const {
-  auto [dummy1, dummy2, rest] = skipSpace(input);
-  if (rest.starts_with(lit)) {
-    rest.remove_prefix(lit.size());
-    return {true, Token{.kind = TokenKind::KeyWord, .sv = lit}, rest};
-  } else {
-    return {false, TokenNone, rest};
-  }
-}
-
-Interpreter::ParserState Interpreter::peek(string_view lit,
-                                           Interpreter::InputType input) const {
-  auto [dummy1, dummy2, rest] = skipSpace(input);
-  if (rest.starts_with(lit)) {
-    return {true, Token{.kind = TokenKind::KeyWord, .sv = lit}, rest};
-  } else {
-    return {false, TokenNone, rest};
-  }
-}
-
-Interpreter::ParserState Interpreter::parseNumber(
-    Interpreter::InputType input) const {
-  auto [dummy1, dummy2, rest] = skipSpace(input);
-  // TODO
-  return {false, TokenNone, rest};
-}
-
-Interpreter::ParserState Interpreter::parseId(
-    Interpreter::InputType input) const {
-  auto [dummy1, dummy2, rest] = skipSpace(input);
-  if (!rest.empty())
-    if (isalpha(rest[0])) {
-      size_t i = 1;
-      for (; i < rest.size() && isalnum(rest[i]); ++i)
-        ;
-      auto tok = rest.substr(0, i);
-      rest.remove_prefix(i);
-      return {true, Token{.kind = TokenKind::Id, .sv = tok}, rest};
+void Interpreter::Interpret() {
+  for (;;) {
+    cur_tok = table_name = TokenNone;
+    cur_attributes.clear();
+    cout << "MiniSQL > ";
+    getline(cin, input);
+    iter = input.begin();
+    try {
+      parseCreateTable();
+    } catch (...) {
+      throw;
     }
-  return {false, TokenNone, rest};
+  }
 }
 
-Interpreter::ParserState Interpreter::parsePath(
-    Interpreter::InputType input) const {
-  auto [dummy1, dummy2, rest] = skipSpace(input);
-  // TODO
-  return {false, TokenNone, rest};
+void Interpreter::skipSpace() {
+  for (; iter != input.end() && isspace(*iter); ++iter)
+    ;
 }
 
-Interpreter::ParserState Interpreter::parseCreateTable(
-    Interpreter::InputType input) const {
-  auto [flag1, _1, rest1] = expect("create"sv, input);
-  if (!flag1) {
-    handleError("expect token `create`", rest1);
-    return {false, TokenNone, rest1};
+void Interpreter::expect(string_view s) {
+  skipSpace();
+  if (input.end() - iter >= static_cast<string::difference_type>(s.length()) &&
+      memcmp(&*iter, s.data(), s.size()) == 0) {
+    iter += s.size();
+    return;
   }
-  auto [flag2, _2, rest2] = expect("table"sv, rest1);
-  if (!flag2) {
-    handleError("expect token `table`", rest2);
-    return {false, TokenNone, rest2};
-  }
-  auto [flag3, id, rest3] = parseId(rest2);
-  if (!flag3) {
-    handleError("expect valid identifier like `[a-zA-Z][a-zA-Z0-9]*`", rest3);
-    return {false, TokenNone, rest3};
-  }
-  // TODO
+  cerr << "expect token `" << s << "`" << endl;
+  throw std::runtime_error("can't find expected token");
 }
-Interpreter::ParserState Interpreter::parseCreateIndex(
-    Interpreter::InputType input) const {}
-Interpreter::ParserState Interpreter::parseSelectStat(
-    Interpreter::InputType input) const {}
-Interpreter::ParserState Interpreter::parseDeleteStat(
-    Interpreter::InputType input) const {}
-Interpreter::ParserState Interpreter::parseInsertStat(
-    Interpreter::InputType input) const {}
-Interpreter::ParserState Interpreter::parseDropTable(
-    Interpreter::InputType input) const {}
-Interpreter::ParserState Interpreter::parseDropIndex(
-    Interpreter::InputType input) const {}
-Interpreter::ParserState Interpreter::parseExec(
-    Interpreter::InputType input) const {}
+
+bool Interpreter::consume(string_view s) {
+  skipSpace();
+  if (input.end() - iter >= static_cast<string::difference_type>(s.length()) &&
+      memcmp(&*iter, s.data(), s.size()) == 0) {
+    iter += s.size();
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool Interpreter::peek(string_view s) {
+  skipSpace();
+  if (input.end() - iter >= static_cast<string::difference_type>(s.length()) &&
+      memcmp(&*iter, s.data(), s.size()) == 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void Interpreter::skip(string_view s) { iter += s.size(); }
+
+void Interpreter::parseAttribute() {
+  Token attr_tok;
+  SqlValueType val_type;
+  SpecialAttribute spec_attr;
+
+  skipSpace();
+  parseId();
+  attr_tok = cur_tok;
+
+  if (peek("integer")) {
+    skip("integer");
+    val_type = static_cast<SqlValueType>(SqlValueTypeBase::Integer);
+  } else if (peek("int")) {
+    skip("int");
+    val_type = static_cast<SqlValueType>(SqlValueTypeBase::Integer);
+  } else if (peek("float")) {
+    skip("float");
+    val_type = static_cast<SqlValueType>(SqlValueTypeBase::Float);
+  } else if (peek("char")) {
+    skip("char");
+    expect("(");
+    parseNumber();
+    assert(cur_tok.kind == TokenKind::Num);
+    if (cur_tok.i < 0 || cur_tok.i > 255)
+      throw std::runtime_error("invalid length of char");
+    val_type = static_cast<SqlValueType>(SqlValueTypeBase::String) +
+               (unsigned)cur_tok.i;
+    expect(")");
+  }
+
+  if (peek("unique")) {
+    skip("unique");
+    spec_attr = SpecialAttribute::UniqueKey;
+  } else {
+    spec_attr = SpecialAttribute::None;
+  }
+
+  cur_attributes.push_back({string(attr_tok.sv), val_type, spec_attr});
+}
+
+void Interpreter::parseConstraint() {
+  skipSpace();
+  expect("primary");
+  expect("key");
+  expect("(");
+  parseId();
+  bool found = false;
+  for (auto &[name, type, spec] : cur_attributes) {
+    if (name == cur_tok.sv) {
+      found = true;
+      spec = SpecialAttribute::PrimaryKey;
+    }
+  }
+  if (!found) throw std::runtime_error("no such attribute");
+  expect(")");
+}
+
+void Interpreter::parseAttributeList() {
+  skipSpace();
+  parseAttribute();
+  while (consume(",")) {
+    if (peek("primary")) {
+      parseConstraint();
+    } else {
+      parseAttribute();
+    }
+  }
+}
+
+void Interpreter::parseNumber() {
+  skipSpace();
+  if (iter == input.end()) throw std::runtime_error("reach end of input");
+  char *end = nullptr;
+  auto val = strtod(&*iter, &end);
+  if (end == &*iter) throw std::runtime_error("reach end of input");
+  iter += end - &*iter;
+  cur_tok = Token{
+      .kind = TokenKind::Num,
+      .sv = ""sv,
+      .f = val,
+      .i = static_cast<int64_t>(val),
+  };
+  return;
+}
+
+void Interpreter::parseId() {
+  skipSpace();
+  if (iter != input.end()) {
+    if (isalpha(iter[0])) {
+      auto start = iter;
+      for (; iter != input.end() && isalnum(*iter); ++iter)
+        ;
+      auto tok = string_view(start, iter);
+      cur_tok = Token{.kind = TokenKind::Id, .sv = tok, .f = 0.0, .i = 0};
+      return;
+    }
+  }
+  cerr << "expect valid identifier like `[A-Za-z][A-Za-z0-9]*`" << endl;
+  throw std::runtime_error("can't find expected token");
+}
+
+void Interpreter::parseCreateTable() {
+  expect("create"sv);
+  expect("table"sv);
+  parseId();
+  table_name = cur_tok;
+  expect("("sv);
+  parseAttributeList();
+  expect(")"sv);
+  if (peek(";"))
+    skip(";");
+  else
+    expect("."sv);
+}
+
+void Interpreter::parseCreateIndex() {}
+void Interpreter::parseSelectStat() {}
+void Interpreter::parseDeleteStat() {}
+void Interpreter::parseInsertStat() {}
+void Interpreter::parseDropTable() {}
+void Interpreter::parseDropIndex() {}
+void Interpreter::parseExec() {}
 
 Interpreter interpreter;
