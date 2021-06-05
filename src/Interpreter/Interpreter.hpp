@@ -51,7 +51,7 @@ class Interpreter {
   static inline constexpr Token TokenNone =
       Token{.kind = TokenKind::None, .sv = "", .f = 0.0, .i = 0};
 
-  Token cur_tok, table_name;
+  Token cur_tok, table_name, index_name, indexed_column_name;
   std::string input;
   std::string::iterator iter;
   std::vector<tuple<string, SqlValueType, SpecialAttribute>> cur_attributes;
@@ -74,6 +74,8 @@ class Interpreter {
   void parseDropTable();
   void parseDropIndex();
   void parseExec();
+  void parseStatEnd();
+  bool parse();
 };
 
 extern Interpreter interpreter;

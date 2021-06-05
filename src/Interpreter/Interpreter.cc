@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cstring>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
@@ -27,20 +28,23 @@ using std::string;
 using std::string_view;
 using std::strtod;
 using std::vector;
+using std::filesystem::path;
 
 using namespace std::literals;
 
 void Interpreter::Interpret() {
   for (;;) {
-    cur_tok = table_name = TokenNone;
+    cur_tok = table_name = index_name = indexed_column_name = TokenNone;
     cur_attributes.clear();
     cout << "MiniSQL > ";
     getline(cin, input);
     iter = input.begin();
+    bool need_quit = false;
     try {
-      parseCreateTable();
+      need_quit = parse();
     } catch (...) {
     }
+    if (need_quit) break;
   }
 }
 
@@ -199,18 +203,107 @@ void Interpreter::parseCreateTable() {
   expect("("sv);
   parseAttributeList();
   expect(")"sv);
-  if (peek(";"))
-    skip(";");
-  else
-    expect("."sv);
+  parseStatEnd();
+#ifdef _DEBUG
+  cout << "DEBUG: create a table named `" << table_name.sv << "`" << endl;
+#endif
 }
 
-void Interpreter::parseCreateIndex() {}
+void Interpreter::parseCreateIndex() {
+  expect("create"sv);
+  expect("index"sv);
+  parseId();
+  index_name = cur_tok;
+  expect("on");
+  parseId();
+  table_name = cur_tok;
+  expect("("sv);
+  parseId();
+  indexed_column_name = cur_tok;
+  expect(")"sv);
+  parseStatEnd();
+#ifdef _DEBUG
+  cout << "DEBUG: create an index on `" << table_name.sv << "."
+       << indexed_column_name.sv << "` named `" << index_name.sv << "`" << endl;
+#endif
+}
+
+void Interpreter::parseDropTable() {
+  expect("drop"sv);
+  expect("table"sv);
+  parseId();
+  table_name = cur_tok;
+  parseStatEnd();
+#ifdef _DEBUG
+  cout << "DEBUG: drop a table named `" << table_name.sv << "`" << endl;
+#endif
+}
+
+void Interpreter::parseDropIndex() {
+  expect("drop"sv);
+  expect("index"sv);
+  parseId();
+  index_name = cur_tok;
+  parseStatEnd();
+#ifdef _DEBUG
+  cout << "DEBUG: drop a index named `" << index_name.sv << "`" << endl;
+#endif
+}
+
+void Interpreter::parseExec() {
+  expect("execfile");
+
+  auto path_end_pos = input.find_last_of(";.");
+  if (path_end_pos == input.npos) {
+    cerr << "not correct format of execfile";
+    throw std::runtime_error("wrong execfile sentence");
+  }
+  auto len = path_end_pos - (iter - input.begin());
+  path file_path(string(&*iter, len));
+
+#ifdef _DEBUG
+  cout << "DEBUG: exec " << file_path << endl;
+#endif
+}
+
 void Interpreter::parseSelectStat() {}
 void Interpreter::parseDeleteStat() {}
 void Interpreter::parseInsertStat() {}
-void Interpreter::parseDropTable() {}
-void Interpreter::parseDropIndex() {}
-void Interpreter::parseExec() {}
+
+void Interpreter::parseStatEnd() {
+  if (!consume(";"sv)) expect("."sv);
+}
+
+bool Interpreter::parse() {
+  auto backup = iter;
+  if (consume("create")) {
+    if (peek("table")) {
+      iter = backup;
+      parseCreateTable();
+    } else if (peek("index")) {
+      iter = backup;
+      parseCreateIndex();
+    } else {
+      expect("table");
+    }
+  } else if (consume("drop")) {
+    if (peek("table")) {
+      iter = backup;
+      parseDropTable();
+    } else if (peek("index")) {
+      iter = backup;
+      parseDropIndex();
+    } else {
+      expect("table");
+    }
+  } else if (peek("execfile")) {
+    parseExec();
+  } else if (peek("quit")) {
+    skip("quit");
+    parseStatEnd();
+    return true;
+  }
+  return false;
+}
 
 Interpreter interpreter;
