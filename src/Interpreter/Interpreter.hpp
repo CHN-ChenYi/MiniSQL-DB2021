@@ -6,8 +6,10 @@
 #include <tuple>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "API.hpp"
+#include "DataStructure.hpp"
 
 class Interpreter {
  public:
@@ -19,26 +21,20 @@ class Interpreter {
   void Interpret();
 
  private:
-  /*
-  static inline constexpr InputType keywords[] = {
+  static inline std::unordered_set<std::string_view> keywords = {
       "select", "insert",  "create", "drop",     "delete", "table", "index",
       "from",   "where",   "quit",   "execfile", "unique", "into",  "values",
       "on",     "primary", "key",    "and",      "char",   "int",   "float",
   };
 
-  static inline constexpr InputType cmpOpLiterals[] = {
-      "", "<=", ">=", "<>", "<", ">"};
-  */
   enum class TokenKind {
     None,
     KeyWord,
-    CmpOp,
-    ArithOp,
-    Space,
-    Num,
+    RelOp,
+    Int,
+    Float,
     Id,
     StrLit,
-    Path,
   };
 
   struct Token {
@@ -55,7 +51,14 @@ class Interpreter {
   std::string input;
   std::string::iterator iter;
   std::vector<tuple<string, SqlValueType, SpecialAttribute>> cur_attributes;
+  std::vector<string> select_attributes;
+  std::vector<Token> cur_values;
+  std::vector<Condition> cur_conditions;
 
+  SqlValue tokenToSqlValue(const Token &tok);
+  Operator tokenToRelOp(const Token &tok);
+  void expectEnd();
+  void outputUntilNextSpace();
   void skipSpace();
   void expect(std::string_view s);
   bool peek(std::string_view s);
@@ -63,9 +66,14 @@ class Interpreter {
   void skip(std::string_view s);
   void parseAttributeList();
   void parseAttribute();
+  void parseClauseAttributeList();
+  void parseValueList();
+  void parseValue();
   void parseConstraint();
+  void parseStringLiteral();
   void parseNumber();
   void parseId();
+  void parseRelOp();
   void parseCreateTable();
   void parseCreateIndex();
   void parseSelectStat();
@@ -75,7 +83,13 @@ class Interpreter {
   void parseDropIndex();
   void parseExec();
   void parseStatEnd();
+  void parseWhereClause();
+  void parseBooleanClause();
+  void parseRelationClause();
   bool parse();
+
+ public:
+  friend std::ostream &operator<<(std::ostream &out, const Token &tok);
 };
 
 extern Interpreter interpreter;

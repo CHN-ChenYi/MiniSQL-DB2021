@@ -33,7 +33,7 @@ struct SqlValue {
   union {
     int Integer;
     float Float;
-    string String;
+    const char *String;
   } val;
   bool operator<(const SqlValue &rhs) const {
     if (type != rhs.type)
@@ -43,6 +43,7 @@ struct SqlValue {
     } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
       return val.Float < rhs.val.Float;
     } else {
+      // TODO
       return val.String < rhs.val.String;
     }
   };
@@ -54,6 +55,7 @@ struct SqlValue {
     } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
       return val.Float == rhs.val.Float;
     } else {
+      // TODO
       return val.String == rhs.val.String;
     }
   }
