@@ -1,8 +1,12 @@
 #include "API.hpp"
 
-void CreateTable(
+#include "CatalogManager.hpp"
+
+bool CreateTable(
     const string &table_name,
-    const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes) {}
+    const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes) {
+  if (!catalog_manager.CreateTable(table_name, attributes)) return false;
+}
 
 void DropTable(const string &table_name) {}
 
@@ -16,5 +20,3 @@ void Select(const string &table_name, const vector<Condition> &conditions) {}
 void Insert(const string &table_name, const Tuple &tuple) {}
 
 void Delete(const string &table_name, const vector<Condition> &conditions) {}
-
-Table *TableInfo(const string &table_name) {}
