@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -14,6 +15,7 @@ using std::unordered_map;
 using std::vector;
 
 namespace Config {
+const int kStringMaxLength = 256;
 const int kBlockSize = 4096;
 #ifdef _DEBUG
 const int kMaxBlockNum = 2;
@@ -43,8 +45,7 @@ struct SqlValue {
     } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
       return val.Float < rhs.val.Float;
     } else {
-      // TODO
-      return val.String < rhs.val.String;
+      return strncmp(val.String, rhs.val.String, Config::kStringMaxLength) < 0;
     }
   };
   bool operator==(const SqlValue &rhs) const {
@@ -55,8 +56,7 @@ struct SqlValue {
     } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
       return val.Float == rhs.val.Float;
     } else {
-      // TODO
-      return val.String == rhs.val.String;
+      return strncmp(val.String, rhs.val.String, Config::kStringMaxLength) == 0;
     }
   }
   bool Compare(const Operator &op, const SqlValue &rhs) const {
@@ -88,6 +88,20 @@ struct Table {
   unordered_map<string, tuple<SqlValueType, SpecialAttribute, size_t>>
       attributes;  // size_t is the offset of the attribute in the record
   unordered_map<string, string> indexes;  // attribute name, index name
+
+  /**
+   * @brief read raw data from ifstream
+   *
+   * @param os the ifstream
+   */
+  void read(ifstream &is);
+
+  /**
+   * @brief write raw data into ofstream
+   *
+   * @param os the ofstream
+   */
+  void write(ofstream &os) const;
 };
 
 struct Block {

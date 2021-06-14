@@ -14,8 +14,9 @@ namespace API {
  *
  * @param table_name the name of the table
  * @param attributes the attributes of the table
+ * @return true if successful
  */
-void CreateTable(
+bool CreateTable(
     const string &table_name,
     const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes);
 
@@ -68,13 +69,4 @@ void Insert(const string &table_name, const Tuple &tuple);
  * records.
  */
 void Delete(const string &table_name, const vector<Condition> &conditions);
-
-/**
- * @brief Fetch a table's catalog
- *
- * @param table_name the name of the table
- * @return the information of the table
- */
-Table *TableInfo(const string &table_name);
-
 }  // namespace API
