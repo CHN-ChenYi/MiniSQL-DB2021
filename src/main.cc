@@ -3,10 +3,6 @@
 
 #include "Interpreter.hpp"
 
-#ifdef _DEBUG
-#include "BufferManager.hpp"
-#endif
-
 int main() {
   try {
     interpreter.Interpret();
