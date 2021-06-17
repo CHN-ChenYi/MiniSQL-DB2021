@@ -1,14 +1,13 @@
 #pragma once
 
-#ifdef _DEBUG
-#include <iostream>
-#endif
+#include <unordered_map>
+using std::unordered_map;
 
 #include "DataStructure.hpp"
 
 struct CatalogBlock : public Block {};
 
-class CatalogManager { // TODO(TO/GA): test
+class CatalogManager {  // TODO(TO/GA): test
   unordered_map<string, Table> tables_;
   inline static const string kCatalogFileName = "Catalog.data";
 
@@ -45,7 +44,7 @@ class CatalogManager { // TODO(TO/GA): test
   Table TableInfo(const string &table_name);
 
   void PrintTables() const {
-    std::cerr << "Hello World!" << std::endl;
+    // TODO
   }
 };
 

@@ -1,13 +1,6 @@
 #include "DataStructure.hpp"
 
-#ifdef _DEBUG
-#include <iostream>
-#endif
-
 void Table::read(ifstream &is) {
-#ifdef _DEBUG
-  std::cerr << "Fuck" << std::endl;
-#endif
   size_t size;
   is.read(reinterpret_cast<char *>(&size), sizeof(size));
   table_name.resize(size);
@@ -46,9 +39,6 @@ void Table::read(ifstream &is) {
     is.read(reinterpret_cast<char *>(index_name.data()), sizeof(char) * length);
     indexes[column_name] = index_name;
   }
-#ifdef _DEBUG
-  std::cerr << "Fuck" << std::endl;
-#endif
 }
 
 void Table::write(ofstream &os) const {

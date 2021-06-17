@@ -2,23 +2,23 @@
 
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <vector>
 using std::ifstream;
+using std::map;
 using std::ofstream;
 using std::string;
 using std::tuple;
-using std::unordered_map;
 using std::vector;
 
 namespace Config {
 const int kStringMaxLength = 256;
 const int kBlockSize = 4096;
 #ifdef _DEBUG
-const int kMaxBlockNum = 2;
+const int kMaxBlockNum = 10;
 #else
 const int kMaxBlockNum = 128;
 #endif
@@ -85,9 +85,9 @@ enum struct SpecialAttribute { None, PrimaryKey, UniqueKey };
 
 struct Table {
   string table_name;
-  unordered_map<string, tuple<SqlValueType, SpecialAttribute, size_t>>
+  map<string, tuple<SqlValueType, SpecialAttribute, size_t>>
       attributes;  // size_t is the offset of the attribute in the record
-  unordered_map<string, string> indexes;  // attribute name, index name
+  map<string, string> indexes;  // attribute name, index name
 
   /**
    * @brief read raw data from ifstream

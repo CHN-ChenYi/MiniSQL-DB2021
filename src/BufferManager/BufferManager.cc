@@ -77,7 +77,8 @@ void BufferManager::AddBlockToBuffer(const size_t &block_id,
 }
 
 Block *BufferManager::Read(const size_t &block_id) {
-  if (block_id >= max_block_id) throw std::out_of_range("block_id out of range");
+  if (block_id >= max_block_id)
+    throw std::out_of_range("block_id out of range");
   auto iter = buffer.find(block_id);
   if (iter == buffer.end()) {
     std::ifstream is(Block::GetBlockFilename(block_id), std::ios::binary);
