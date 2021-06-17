@@ -13,8 +13,9 @@ class RecordManager {
      * @brief set the iterator to the start of a specified table
      *
      * @param table_name the name of the table
+     * @return false is the table is empty
      */
-    void Init(const string &table_name) {}
+    bool Init(const string &table_name) {}
 
     /**
      * @brief move the iterator to the next record
