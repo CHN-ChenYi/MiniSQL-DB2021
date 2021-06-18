@@ -92,7 +92,7 @@ struct Table {
   /**
    * @brief read raw data from ifstream
    *
-   * @param os the ifstream
+   * @param is the ifstream
    */
   void read(ifstream &is);
 
