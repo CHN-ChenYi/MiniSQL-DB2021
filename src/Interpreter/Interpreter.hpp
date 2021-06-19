@@ -27,7 +27,11 @@ class Interpreter {
    *
    */
   bool interpretFile(const std::filesystem::path &filename);
-
+  /**
+   * @brief Set the base directory for relative path
+   *
+   */
+  void setWorkdir(const std::filesystem::path &dir) { cur_dir = dir; }
  private:
   static inline std::unordered_set<std::string_view> keywords = {
       "select", "insert",  "create", "drop",     "delete", "table", "index",
@@ -64,7 +68,6 @@ class Interpreter {
   std::vector<Condition> cur_conditions;
   std::filesystem::path cur_dir = "";
 
-  void setWorkdir(const std::filesystem::path &dir) { cur_dir = dir; }
   SqlValue tokenToSqlValue(const Token &tok);
   Operator tokenToRelOp(const Token &tok);
   void expectEnd();
