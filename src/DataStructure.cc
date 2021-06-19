@@ -8,6 +8,8 @@ void Table::read(ifstream &is) {
 
   is.read(reinterpret_cast<char *>(&size), sizeof(size));
   while (size--) {
+    size_t index;
+    is.read(reinterpret_cast<char *>(&index), sizeof(index));
     size_t length;
     is.read(reinterpret_cast<char *>(&length), sizeof(length));
     string attribute_name;
@@ -22,7 +24,7 @@ void Table::read(ifstream &is) {
     size_t offset;
     is.read(reinterpret_cast<char *>(&offset), sizeof(offset));
     attributes[attribute_name] = std::make_tuple(
-        type, static_cast<SpecialAttribute>(special_attribute), offset);
+        index, type, static_cast<SpecialAttribute>(special_attribute), offset);
   }
 
   is.read(reinterpret_cast<char *>(&size), sizeof(size));
@@ -49,16 +51,18 @@ void Table::write(ofstream &os) const {
   size = attributes.size();
   os.write(reinterpret_cast<const char *>(&size), sizeof(size));
   for (const auto &attribute : attributes) {
+    const auto index = std::get<0>(attribute.second);
+    os.write(reinterpret_cast<const char *>(&index), sizeof(index));
     size = attribute.first.length();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     os.write(attribute.first.c_str(), sizeof(char) * size);
-    const auto type = std::get<0>(attribute.second);
+    const auto type = std::get<1>(attribute.second);
     os.write(reinterpret_cast<const char *>(&type), sizeof(type));
     const unsigned special_attribute =
-        static_cast<unsigned>(std::get<1>(attribute.second));
+        static_cast<unsigned>(std::get<2>(attribute.second));
     os.write(reinterpret_cast<const char *>(&special_attribute),
              sizeof(special_attribute));
-    const auto offset = std::get<2>(attribute.second);
+    const auto offset = std::get<3>(attribute.second);
     os.write(reinterpret_cast<const char *>(&offset), sizeof(offset));
   }
 

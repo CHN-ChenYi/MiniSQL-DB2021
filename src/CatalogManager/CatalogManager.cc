@@ -32,12 +32,12 @@ bool CatalogManager::CreateTable(
     const string &table_name,
     const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes) {
   if (tables_.contains(table_name)) return false;
-  size_t offset = 0;
+  size_t index = 0, offset = 0;
   Table table;
   table.table_name = table_name;
   for (const auto &[attribute_name, type, special_attribute] : attributes) {
     table.attributes[attribute_name] =
-        std::make_tuple(type, special_attribute, offset);
+        std::make_tuple(index++, type, special_attribute, offset);
     switch (type) {
       case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
         offset += sizeof(int);
@@ -55,7 +55,7 @@ bool CatalogManager::CreateTable(
   return true;
 }
 
-const Table& CatalogManager::TableInfo(const string &table_name) {
+const Table &CatalogManager::TableInfo(const string &table_name) {
   if (!tables_.contains(table_name)) {
     throw std::runtime_error("Table not found");
   }

@@ -85,8 +85,9 @@ enum struct SpecialAttribute { None, PrimaryKey, UniqueKey };
 
 struct Table {
   string table_name;
-  map<string, tuple<SqlValueType, SpecialAttribute, size_t>>
-      attributes;  // size_t is the offset of the attribute in the record
+  /* the first size_t: the index in Tuple
+   * the second size_t: the offset of the attribute in the record */
+  map<string, tuple<size_t, SqlValueType, SpecialAttribute, size_t>> attributes;
   map<string, string> indexes;  // attribute name, index name
 
   /**
