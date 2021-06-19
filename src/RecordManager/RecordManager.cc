@@ -1,8 +1,13 @@
 #include "RecordManager.hpp"
 
+#include <corecrt.h>
+
 #include <fstream>
 #include <iostream>
 #include <ostream>
+#include "BufferManager.hpp"
+#include "DataStructure.hpp"
+
 
 using std::cerr;
 using std::endl;
@@ -63,22 +68,28 @@ RecordManager::~RecordManager() {
     }
   }
 }
+size_t nextAvailingBlock() { return 0; }
 
-bool RecordManager::createTable(const std::string &table_name) {
-  if (table_blocks.contains(table_name))
+bool RecordManager::createTable(const Table &table) {
+  if (table_blocks.contains(table.table_name))
     throw std::runtime_error("such a table already exists");
-  return table_blocks.insert({table_name, {}}).second;
+  return table_blocks.insert({table.table_name, {nextAvailingBlock()}}).second;
 }
 
-bool RecordManager::dropTable(const std::string &table_name) {}
-
-bool RecordManager::deleteTable(const std::string &table_name) {}
+bool RecordManager::dropTable(const Table &table) {
+  if (!table_blocks.contains(table.table_name))
+    throw std::runtime_error("no such a table");
+  for (auto &record : (*this)[table]) {
+    record.deleteRecord();
+  }
+  table_blocks.erase(table.table_name);
+}
 
 RecordManager::TableProxy RecordManager::operator[](
-    const std::string &table_name) {
-  if (!table_blocks.contains(table_name))
+    const Table& table) {
+  if (!table_blocks.contains(table.table_name))
     throw std::runtime_error("no such a table");
-  return TableProxy(&table_blocks.find(table_name)->second);
+  return TableProxy(&table_blocks.find(table.table_name)->second, &table);
 }
 
 RecordManager record_manager;

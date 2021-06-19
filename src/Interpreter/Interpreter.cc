@@ -219,7 +219,7 @@ void Interpreter::parseAttribute() {
     expect("(");
     parseNumber();
     if (cur_tok.kind != TokenKind::Int ||
-        (cur_tok.i < 0 || cur_tok.i >= Config::kStringMaxLength))
+        (cur_tok.i < 0 || cur_tok.i >= Config::kMaxStringLength))
       throw std::runtime_error("invalid length of char");
     val_type = static_cast<SqlValueType>(SqlValueTypeBase::String) +
                (unsigned)cur_tok.i;
@@ -589,7 +589,7 @@ SqlValue Interpreter::tokenToSqlValue(const Token &tok) {
     case Interpreter::TokenKind::StrLit:
       val.type =
           static_cast<SqlValueType>(SqlValueTypeBase::String) + tok.sv.length();
-      val.val.String = tok.sv.data();
+      memcpy(val.val.String, tok.sv.data(), tok.sv.size());
       break;
     default:
       assert(0);

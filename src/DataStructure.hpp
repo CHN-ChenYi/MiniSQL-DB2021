@@ -15,7 +15,7 @@ using std::tuple;
 using std::vector;
 
 namespace Config {
-const int kStringMaxLength = 256;
+const int kMaxStringLength = 256;
 const int kBlockSize = 4096;
 #ifdef _DEBUG
 const int kMaxBlockNum = 10;
@@ -35,7 +35,7 @@ struct SqlValue {
   union {
     int Integer;
     float Float;
-    const char *String;
+    char String[Config::kMaxStringLength];
   } val;
   bool operator<(const SqlValue &rhs) const {
     if (type != rhs.type)
@@ -45,7 +45,7 @@ struct SqlValue {
     } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
       return val.Float < rhs.val.Float;
     } else {
-      return strncmp(val.String, rhs.val.String, Config::kStringMaxLength) < 0;
+      return strncmp(val.String, rhs.val.String, Config::kMaxStringLength) < 0;
     }
   };
   bool operator==(const SqlValue &rhs) const {
@@ -56,7 +56,7 @@ struct SqlValue {
     } else if (type == static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
       return val.Float == rhs.val.Float;
     } else {
-      return strncmp(val.String, rhs.val.String, Config::kStringMaxLength) == 0;
+      return strncmp(val.String, rhs.val.String, Config::kMaxStringLength) == 0;
     }
   }
   bool Compare(const Operator &op, const SqlValue &rhs) const {

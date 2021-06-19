@@ -41,7 +41,7 @@ class CatalogManager {  // TODO(TO/GA): test
    * @param table_name the name of the table
    * @return the information of the table
    */
-  Table TableInfo(const string &table_name);
+  const Table& TableInfo(const string &table_name);
 
   void PrintTables() const {
     // TODO

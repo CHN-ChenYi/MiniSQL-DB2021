@@ -55,7 +55,7 @@ bool CatalogManager::CreateTable(
   return true;
 }
 
-Table CatalogManager::TableInfo(const string &table_name) {
+const Table& CatalogManager::TableInfo(const string &table_name) {
   if (!tables_.contains(table_name)) {
     throw std::runtime_error("Table not found");
   }
