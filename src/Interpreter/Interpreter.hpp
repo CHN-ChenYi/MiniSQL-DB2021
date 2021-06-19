@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -11,6 +12,7 @@
 #include "API.hpp"
 #include "DataStructure.hpp"
 
+
 class Interpreter {
  public:
   /**
@@ -18,7 +20,13 @@ class Interpreter {
    * API module. Return when user quits.
    *
    */
-  void Interpret();
+  void interpret();
+  /**
+   * @brief Read commands from a file, interpret them and then execute them by
+   * API module.
+   *
+   */
+  bool interpretFile(const std::filesystem::path &filename);
 
  private:
   static inline std::unordered_set<std::string_view> keywords = {
@@ -54,7 +62,9 @@ class Interpreter {
   std::vector<string> select_attributes;
   std::vector<Token> cur_values;
   std::vector<Condition> cur_conditions;
+  std::filesystem::path cur_dir = "";
 
+  void setWorkdir(const std::filesystem::path &dir) { cur_dir = dir; }
   SqlValue tokenToSqlValue(const Token &tok);
   Operator tokenToRelOp(const Token &tok);
   void expectEnd();
@@ -87,6 +97,7 @@ class Interpreter {
   void parseBooleanClause();
   void parseRelationClause();
   bool parse();
+  bool parseLine();
 
  public:
   friend std::ostream &operator<<(std::ostream &out, const Token &tok);

@@ -1,7 +1,5 @@
 #include "RecordManager.hpp"
 
-#include <corecrt.h>
-
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -64,6 +62,23 @@ RecordManager::~RecordManager() {
       os.write(reinterpret_cast<const char *>(&blks[j]), sizeof(blks[j]));
     }
   }
+}
+
+bool RecordManager::createTable(const std::string &table_name) {
+  if (table_blocks.contains(table_name))
+    throw std::runtime_error("such a table already exists");
+  return table_blocks.insert({table_name, {}}).second;
+}
+
+bool RecordManager::dropTable(const std::string &table_name) {}
+
+bool RecordManager::deleteTable(const std::string &table_name) {}
+
+RecordManager::TableProxy RecordManager::operator[](
+    const std::string &table_name) {
+  if (!table_blocks.contains(table_name))
+    throw std::runtime_error("no such a table");
+  return TableProxy(&table_blocks.find(table_name)->second);
 }
 
 RecordManager record_manager;

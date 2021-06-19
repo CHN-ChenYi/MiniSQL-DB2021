@@ -4,13 +4,16 @@
 #include <atomic>
 #include <cassert>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -41,8 +44,10 @@ using std::ostream;
 using std::strchr;
 using std::string;
 using std::string_view;
+using std::stringstream;
 using std::strtod;
 using std::unordered_map;
+using std::chrono::steady_clock;
 using std::filesystem::path;
 
 using namespace std::literals;
@@ -51,7 +56,7 @@ int icasecmp(const char *s1, const char *s2, size_t n) {
   return strncasecmp(s1, s2, n);
 }
 
-void Interpreter::Interpret() {
+void Interpreter::interpret() {
   for (;;) {
     cur_tok = table_name = index_name = indexed_column_name = TokenNone;
     cur_attributes.clear();
@@ -64,11 +69,51 @@ void Interpreter::Interpret() {
     iter = input.begin();
     bool need_quit = false;
     try {
-      need_quit = parse();
+      need_quit = parseLine();
     } catch (...) {
+      throw;
     }
     if (need_quit) break;
   }
+}
+
+bool Interpreter::interpretFile(const path &filename) {
+  auto t1 = steady_clock::now();
+  ifstream is(cur_dir / filename, std::ios::binary);
+  stringstream buf;
+  size_t sentence_cnt = 0;
+  if (!is) {
+    cerr << "can't open file " << cur_dir / filename << endl;
+    return false;
+  }
+  buf << is.rdbuf();
+  input = buf.str();
+  iter = input.begin();
+  skipSpace();
+
+  for (; iter != input.end(); ++sentence_cnt) {
+    cur_tok = table_name = index_name = indexed_column_name = TokenNone;
+    cur_attributes.clear();
+    cur_values.clear();
+    select_attributes.clear();
+    cur_conditions.clear();
+
+    bool need_quit = false;
+    try {
+      need_quit = parse();
+    } catch (...) {
+      throw;
+    }
+    if (need_quit) break;
+    skipSpace();
+  }
+
+  auto t2 = steady_clock::now();
+  std::chrono::duration<double> diff = t2 - t1;
+  cout << "run " ANSI_COLOR_GREEN << sentence_cnt
+       << ANSI_COLOR_RESET " sentences in " ANSI_COLOR_MAGENTA << diff.count()
+       << "s" ANSI_COLOR_RESET << endl;
+  return true;
 }
 
 void Interpreter::expectEnd() {
@@ -397,18 +442,30 @@ void Interpreter::parseDropIndex() {
 
 void Interpreter::parseExec() {
   expect("execfile");
+  skipSpace();
 
-  auto path_end_pos = input.find_last_of(";.");
+  auto line_end_pos = input.find_first_of("\r\n", iter - input.begin());
+  auto path_end_pos = input.find_last_of(";.", line_end_pos);
   if (path_end_pos == input.npos) {
-    cerr << "not correct format of execfile";
+    cerr << "not correct format of execfile" << endl;
     throw std::runtime_error("wrong execfile sentence");
   }
   auto len = path_end_pos - (iter - input.begin());
   path file_path(string(&*iter, len));
 
+  iter += len;
+  parseStatEnd();
+
 #ifdef _DEBUG
   cout << "DEBUG: exec " << file_path << endl;
 #endif
+  Interpreter child_interpreter;
+  if (file_path.is_absolute()) {
+    child_interpreter.setWorkdir(file_path.parent_path());
+  } else if (file_path.is_relative()) {
+    child_interpreter.setWorkdir(cur_dir / file_path.parent_path());
+  }
+  child_interpreter.interpretFile(file_path.filename());
 }
 
 void Interpreter::parseValueList() {
@@ -585,7 +642,9 @@ void Interpreter::parseStatEnd() {
 
 bool Interpreter::parse() {
   auto backup = iter;
-  if (consume("create")) {
+  if (peek("insert")) {
+    parseInsertStat();
+  } else if (consume("create")) {
     if (peek("table")) {
       iter = backup;
       parseCreateTable();
@@ -605,8 +664,6 @@ bool Interpreter::parse() {
     } else {
       expect("table");
     }
-  } else if (peek("insert")) {
-    parseInsertStat();
   } else if (peek("execfile")) {
     parseExec();
   } else if (peek("quit")) {
@@ -620,8 +677,13 @@ bool Interpreter::parse() {
     parseDeleteStat();
   } else {
     cerr << "expect a valid sentence" << endl;
-    return false;
+    iter = input.end();
   }
+  return false;
+}
+
+bool Interpreter::parseLine() {
+  if (parse()) return true;
   expectEnd();
   return false;
 }

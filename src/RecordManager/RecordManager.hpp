@@ -2,9 +2,9 @@
 
 #include <cassert>
 #include <cstring>
+#include <exception>
 #include <functional>
 #include <map>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -15,6 +15,10 @@ struct RecordBlock : public Block {};
 
 class RecordManager {
   inline static const string kRecordFileName = "Record.data";
+
+  struct RecordIterator;
+  friend bool operator==(const RecordIterator& a, const RecordIterator& b);
+  friend bool operator!=(const RecordIterator& a, const RecordIterator& b);
 
   struct RecordAccessProxy {
     vector<size_t>* p_blks;
@@ -47,11 +51,11 @@ class RecordManager {
     }
 
     friend bool operator==(const RecordIterator& a, const RecordIterator& b) {
-      return memcmp(&a.m.pos, &b.m.pos, sizeof(Position)) == 0;
+      return memcmp(&a.m, &b.m, sizeof(RecordAccessProxy)) == 0;
     };
 
     friend bool operator!=(const RecordIterator& a, const RecordIterator& b) {
-      return memcmp(&a.m.pos, &b.m.pos, sizeof(Position)) != 0;
+      return memcmp(&a.m, &b.m, sizeof(RecordAccessProxy)) != 0;
     };
 
    private:
@@ -81,11 +85,10 @@ class RecordManager {
  public:
   RecordManager();
   ~RecordManager();
-  TableProxy operator[](const std::string& table_name) {
-    if (!table_blocks.contains(table_name))
-      throw std::runtime_error("no such table");
-    return TableProxy(&table_blocks.find(table_name)->second);
-  }
+  bool createTable(const std::string& table_name);
+  bool dropTable(const std::string& table_name);
+  bool deleteTable(const std::string& table_name);
+  TableProxy operator[](const std::string& table_name);
 };
 
 extern RecordManager record_manager;
