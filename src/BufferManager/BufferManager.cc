@@ -100,5 +100,5 @@ size_t BufferManager::Write(Block *block) {
 }
 
 size_t BufferManager::NextId() {
-  return max_block_id + 1;
+  return max_block_id;
 }
