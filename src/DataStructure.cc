@@ -1,8 +1,5 @@
 #include "DataStructure.hpp"
 
-#include <corecrt.h>
-
-
 void Table::read(ifstream &is) {
   size_t size;
   is.read(reinterpret_cast<char *>(&size), sizeof(size));
@@ -102,12 +99,14 @@ size_t Table::getAttributeSize() const {
 }
 
 Tuple Table::makeEmptyTuple() const {
-  size_t cnt = attributes.size();
-  Tuple res;
-  res.values.resize(cnt);
-  for (auto &[_1, attr] : attributes) {
-    auto &[idx, type, _3, _4] = attr;
-    res.values[idx].type = type;
+  static Tuple res;
+  if (res.values.empty()) {
+    size_t cnt = attributes.size();
+    res.values.resize(cnt);
+    for (auto &[_1, attr] : attributes) {
+      auto &[idx, type, _3, _4] = attr;
+      res.values[idx].type = type;
+    }
   }
   return res;
 }

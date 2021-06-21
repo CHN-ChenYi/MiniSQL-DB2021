@@ -7,6 +7,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+
 using std::ifstream;
 using std::map;
 using std::ofstream;
@@ -25,7 +26,7 @@ namespace Config {
 #define ANSI_COLOR_RESET "\x1b[0m"
 
 const int kMaxStringLength = 256;
-const int kBlockSize = 4096;
+const int kBlockSize = 4 * 1024;
 #ifdef _DEBUG
 const int kMaxBlockNum = 10;
 #else
@@ -84,10 +85,35 @@ struct SqlValue {
         return !(*this == rhs);
     }
   }
+  operator string() {
+    string buf;
+    switch (type) {
+      case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
+        buf += std::to_string(val.Integer);
+        break;
+      case static_cast<SqlValueType>(SqlValueTypeBase::Float):
+        buf += std::to_string(val.Float);
+        break;
+      default: {
+        size_t len = type - static_cast<SqlValueType>(SqlValueTypeBase::String);
+        buf += string(val.String, len);
+        break;
+      }
+    }
+    return buf;
+  }
 };
 
 struct Tuple {
   vector<SqlValue> values;
+  operator string() {
+    string buf;
+    for (auto &v : values) {
+      buf += static_cast<string>(v);
+      buf += " ";
+    }
+    return buf;
+  }
 };
 
 enum struct SpecialAttribute { None, PrimaryKey, UniqueKey };

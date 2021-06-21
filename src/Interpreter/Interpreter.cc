@@ -1,5 +1,7 @@
 #include "Interpreter.hpp"
 
+#include <corecrt.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -22,6 +24,7 @@
 #include <utility>
 
 #include "API.hpp"
+#include "CatalogManager.hpp"
 #include "DataStructure.hpp"
 
 using std::cerr;
@@ -387,7 +390,7 @@ void Interpreter::parseCreateTable() {
   parseAttributeList();
   expect(")"sv);
   parseStatEnd();
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: create a table named `" << table_name.sv << "`" << endl;
 #endif
 
@@ -407,7 +410,7 @@ void Interpreter::parseCreateIndex() {
   indexed_column_name = cur_tok;
   expect(")"sv);
   parseStatEnd();
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: create an index on `" << table_name.sv << "."
        << indexed_column_name.sv << "` named `" << index_name.sv << "`" << endl;
 #endif
@@ -419,7 +422,7 @@ void Interpreter::parseDropTable() {
   parseId();
   table_name = cur_tok;
   parseStatEnd();
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: drop a table named `" << table_name.sv << "`" << endl;
 #endif
 }
@@ -430,7 +433,7 @@ void Interpreter::parseDropIndex() {
   parseId();
   index_name = cur_tok;
   parseStatEnd();
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: drop a index named `" << index_name.sv << "`" << endl;
 #endif
 }
@@ -451,7 +454,7 @@ void Interpreter::parseExec() {
   iter += len;
   parseStatEnd();
 
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: exec " << file_path << endl;
 #endif
   Interpreter child_interpreter;
@@ -491,7 +494,7 @@ void Interpreter::parseSelectStat() {
   table_name = cur_tok;
   if (peek("where")) parseWhereClause();
   parseStatEnd();
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: select";
   if (select_attributes.empty())
     cout << " *" << endl;
@@ -510,6 +513,8 @@ void Interpreter::parseSelectStat() {
     }
   }
 #endif
+
+  Select(string(table_name.sv), cur_conditions);
 }
 
 void Interpreter::parseDeleteStat() {
@@ -523,7 +528,7 @@ void Interpreter::parseDeleteStat() {
   if (peek("where")) parseWhereClause();
   parseStatEnd();
 
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: delete";
   if (select_attributes.empty())
     cout << " *" << endl;
@@ -557,24 +562,58 @@ void Interpreter::parseInsertStat() {
   if (cur_values.size() > 31) {
     cerr << "WARNING: the count of values is large than 31" << endl;
   }
-#ifdef _DEBUG
+#ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: insert into `" << table_name.sv << "` with values" << endl;
   for (auto &v : cur_values) {
     cout << "  " << v << endl;
   }
 #endif
-
-  Tuple t;
-  for (auto &v : cur_values) {
-    t.values.push_back(tokenToSqlValue(v));
+  Tuple t = catalog_manager.TableInfo(string(table_name.sv)).makeEmptyTuple();
+  if (t.values.size() != cur_values.size()) {
+    cerr << "the number of values doesn't match";
+    throw syntax_error("the number of value wrong");
   }
-
+  for (size_t i = 0; i < t.values.size(); ++i) {
+    tokenToSqlValue(t.values[i], cur_values[i]);
+  }
   Insert(string(table_name.sv), t);
 }
 
 void Interpreter::parseWhereClause() {
   expect("where"sv);
   parseBooleanClause();
+}
+
+void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
+  switch (tok.kind) {
+    case Interpreter::TokenKind::Int:
+      if (val.type != static_cast<SqlValueType>(SqlValueTypeBase::Integer)) {
+        cerr << "the types of the table and values don't match" << endl;
+        throw syntax_error("type error");
+      }
+      val.val.Integer = tok.i;
+      break;
+    case Interpreter::TokenKind::Float:
+      if (val.type != static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
+        cerr << "the types of the table and values don't match" << endl;
+        throw syntax_error("type error");
+      }
+      val.val.Float = tok.f;
+      break;
+    case Interpreter::TokenKind::StrLit:
+      if (val.type < tok.sv.length() +
+                         static_cast<SqlValueType>(SqlValueTypeBase::String)) {
+        cerr << "string length exceeded" << endl;
+        throw syntax_error("type error");
+      }
+      memcpy(val.val.String, tok.sv.data(), tok.sv.size());
+      if (tok.sv.size() < Config::kMaxStringLength)
+        memset(val.val.String + tok.sv.size(), 0,
+               Config::kMaxStringLength - tok.sv.size());
+      break;
+    default:
+      assert(0);
+  }
 }
 
 SqlValue Interpreter::tokenToSqlValue(const Token &tok) {

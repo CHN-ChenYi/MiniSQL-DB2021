@@ -1,10 +1,9 @@
 #include "RecordManager.hpp"
 
-#include <string.h>
-
 #include <fstream>
 #include <iostream>
 #include <ostream>
+#include <utility>
 
 #include "BufferManager.hpp"
 #include "CatalogManager.hpp"
@@ -71,14 +70,22 @@ RecordManager::~RecordManager() {
 }
 
 bool RecordManager::createTable(const Table &table) {
-  if (table_blocks.contains(table.table_name))
-    throw std::runtime_error("such a table already exists");
+  if (table_blocks.contains(table.table_name)) {
+    cerr << "such a table already exists" << endl;
+    return true;
+  }
+  RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
   table_blocks.insert({table.table_name, {}});
+  table_current.emplace(table.table_name, rap);
+  table_current[table.table_name].newBlock();
   return true;
 }
+
 bool RecordManager::dropTable(const Table &table) {
-  if (!table_blocks.contains(table.table_name))
-    throw std::runtime_error("no such a table");
+  if (!table_blocks.contains(table.table_name)) {
+    cerr << "such a table doesn't exist" << endl;
+    return true;
+  }
   for (auto &id : table_blocks[table.table_name]) {
     auto p = buffer_manager.Read(id);
     memset(p->val_, 0, Config::kBlockSize);
@@ -86,13 +93,8 @@ bool RecordManager::dropTable(const Table &table) {
     p->pin_ = false;
   }
   table_blocks.erase(table.table_name);
-}
-
-RecordManager::TableProxy RecordManager::operator[](const string &table_name) {
-  if (!table_blocks.contains(table_name))
-    throw std::runtime_error("no such a table");
-  return TableProxy(table_blocks[table_name],
-                    catalog_manager.TableInfo(table_name));
+  table_current.erase(table.table_name);
+  return true;
 }
 
 RecordManager record_manager;

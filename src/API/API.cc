@@ -1,5 +1,7 @@
 #include "API.hpp"
 
+#include <unordered_map>
+
 #include "CatalogManager.hpp"
 #include "RecordManager.hpp"
 
@@ -18,10 +20,16 @@ void CreateIndex(const string &table_name, const string &index_name,
 
 void DropIndex(const string &index_name) {}
 
-void Select(const string &table_name, const vector<Condition> &conditions) {}
+void Select(const string &table_name, const vector<Condition> &conditions) {
+  auto res =
+      record_manager.selectAllRecord(catalog_manager.TableInfo(table_name));
+  for (auto &v : res) {
+    std::cout << static_cast<std::string>(v) << std::endl;
+  }
+}
 
 void Insert(const string &table_name, const Tuple &tuple) {
-  record_manager[table_name].insertRecord(tuple);
+  record_manager.insertRecord(catalog_manager.TableInfo(table_name), tuple);
 }
 
 void Delete(const string &table_name, const vector<Condition> &conditions) {}
