@@ -18,9 +18,10 @@ static bool CheckFileExists(const std::string &filename) {
   return std::filesystem::exists(filename);
 }
 
-static void WriteToFile(const size_t &block_id, const Block *block) {
+static void WriteToFile(const size_t &block_id, Block *block) {
   std::ofstream os(Block::GetBlockFilename(block_id), std::ios::binary);
   block->write(os);
+  block->dirty_ = false;
 #ifdef _DEBUG
   std::cerr << "Write back block " << block_id << std::endl;
 #endif
@@ -91,9 +92,13 @@ Block *BufferManager::Read(const size_t &block_id) {
   return iter->second.block;
 }
 
-size_t BufferManager::Write(Block *const block) {
+size_t BufferManager::Write(Block *block) {
   const auto block_id = max_block_id++;
   WriteToFile(block_id, block);
   if (buffer.find(block_id) == buffer.end()) AddBlockToBuffer(block_id, block);
   return block_id;
+}
+
+size_t BufferManager::NextId() {
+  return max_block_id + 1;
 }

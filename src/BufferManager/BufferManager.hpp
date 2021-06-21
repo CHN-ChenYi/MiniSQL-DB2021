@@ -51,7 +51,14 @@ class BufferManager {
    * @param block a pointer to the block
    * @return the id of the block
    */
-  static size_t Write(Block *const block);
+  static size_t Write(Block *block);
+
+  /**
+   * @brief get the id of the next new block
+   *
+   * @return the id of the next new block
+   */
+  static size_t NextId();
 };
 
 extern BufferManager buffer_manager;
