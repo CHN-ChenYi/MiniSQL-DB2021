@@ -1,7 +1,4 @@
 #include "API.hpp"
-
-#include <unordered_map>
-
 #include "CatalogManager.hpp"
 #include "RecordManager.hpp"
 
