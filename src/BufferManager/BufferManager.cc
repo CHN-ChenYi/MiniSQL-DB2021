@@ -78,7 +78,12 @@ void BufferManager::AddBlockToBuffer(const size_t &block_id,
 }
 
 Block *BufferManager::Read(const size_t &block_id) {
-  if (block_id >= max_block_id)
+  if (block_id == max_block_id) {
+    Block *block = new Block;
+    Write(block);
+    return block;
+  }
+  if (block_id > max_block_id)
     throw std::out_of_range("block_id out of range");
   auto iter = buffer.find(block_id);
   if (iter == buffer.end()) {
