@@ -6,7 +6,9 @@
 #include <cstring>
 #include <exception>
 #include <functional>
+#include <iostream>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -15,84 +17,90 @@
 #include "BufferManager.hpp"
 #include "DataStructure.hpp"
 
-struct RecordBlock : public Block {
-  /* Record block layout
-     +--------------------------------------+
-     |           records         | metadata |
-     +--------------------------------------+
-  */
-
-  struct MetaData {
-    unsigned record_len;
-    unsigned record_end;
-    void setRecordLength(const Table &table) {
-      
-    }
-  };
-
-  MetaData getMetaData() {
-    MetaData md;
-    memcpy(&md, val_ + Config::kBlockSize - sizeof(MetaData), sizeof(MetaData));
-    return md;
-  }
-
-  void setMetaData(const MetaData& md) {
-    memcpy(val_ + Config::kBlockSize - sizeof(MetaData), &md, sizeof(MetaData));
-  }
-};
+struct RecordBlock : public Block {};
 
 class RecordManager {
   inline static const string kRecordFileName = "Record.data";
 
-  struct RecordIterator;
-  friend bool operator==(const RecordIterator& a, const RecordIterator& b);
-  friend bool operator!=(const RecordIterator& a, const RecordIterator& b);
-
   struct RecordAccessProxy {
-    vector<size_t>* p_vec_blk_id;
-    size_t blk_idx;
-    RecordBlock* cur_blk;
-    char* p;
-    RecordBlock::MetaData cur_md;
+    vector<size_t>& block_id_;
+    const Table& table_;
+    size_t record_len_;
+    size_t blk_idx_;
+    RecordBlock* cur_blk_;
+    char* data_;
+    Tuple tuple_;
 
-    RecordAccessProxy(vector<size_t>* p_vec_blk_id, size_t blk_idx) {
-      if (p_vec_blk_id->empty()) return;
-      cur_blk = dynamic_cast<RecordBlock*>(
-          buffer_manager.Read((*p_vec_blk_id)[blk_idx]));
-      cur_md = cur_blk->getMetaData();
-      p = cur_blk->val_;
+    RecordAccessProxy(vector<size_t>& block_id, const Table& table,
+                      size_t blk_idx)
+        : block_id_(block_id),
+          table_(table),
+          record_len_(table.getAttributeSize() + 1 /* tag size is 1*/),
+          blk_idx_(blk_idx) {
+      if (block_id.empty()) {
+        cur_blk_ = nullptr;
+        data_ = nullptr;
+        return;
+      }
+      cur_blk_ =
+          dynamic_cast<RecordBlock*>(buffer_manager.Read(block_id[blk_idx]));
+      cur_blk_->pin_ = true;
+      data_ = cur_blk_->val_;
+      tuple_ = table.makeEmptyTuple();
+    }
+
+    bool isCurrentSlotValid() {
+      if (data_)
+        return *data_;
+      else
+        return false;
+    }
+
+    void releaseCurrentBlock() {
+      if (cur_blk_) cur_blk_->pin_ = false;
     }
 
     bool nextBlock() {
-      if (blk_idx + 1 < p_vec_blk_id->size()) {
-        ++blk_idx;
+      if (blk_idx_ + 1 < block_id_.size()) {
+        ++blk_idx_;
       } else {
         return false;
       }
-      cur_blk = dynamic_cast<RecordBlock*>(
-          buffer_manager.Read((*p_vec_blk_id)[blk_idx]));
-      cur_md = cur_blk->getMetaData();
-      p = cur_blk->val_;
+      cur_blk_->pin_ = false;
+      cur_blk_ =
+          dynamic_cast<RecordBlock*>(buffer_manager.Read(block_id_[blk_idx_]));
+      cur_blk_->pin_ = true;
+      data_ = cur_blk_->val_;
 
-      if (cur_md.record_end == 0) return false;
-      if (*p) return true;
-      return next();
+      return true;
+    }
+
+    void newBlock() {
+      size_t new_id = buffer_manager.NextId();
+      if (cur_blk_) {
+        cur_blk_->pin_ = false;
+        ++blk_idx_;
+      }
+      cur_blk_ = dynamic_cast<RecordBlock*>(buffer_manager.Read(new_id));
+      cur_blk_->pin_ = true;
+      cur_blk_->dirty_ = true;
+      data_ = cur_blk_->val_;
+      memset(data_, 0, Config::kBlockSize);
+
+      block_id_.push_back(new_id);
     }
 
     bool next() {
-      p += cur_md.record_len;
-      if (*p) return true;
-      for (; p - cur_blk->val_ < cur_md.record_end && !*p;
-           p += cur_md.record_len)
-        ;
-      if (p - cur_blk->val_ < cur_md.record_end) return true;
+      if (!cur_blk_) return false;
+      data_ += record_len_;
+      if (data_ - cur_blk_->val_ < Config::kBlockSize) return true;
       return nextBlock();
     }
 
-    void extractData(Tuple& tuple) {
-      assert(*p);
-      char* tmp = p + 1;
-      for (auto& v : tuple.values) {
+    const Tuple& extractData() {
+      assert(isCurrentSlotValid());
+      char* tmp = data_ + 1;
+      for (auto& v : tuple_.values) {
         switch (v.type) {
           case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
             memcpy(&v.val.Integer, tmp, sizeof(v.val.Integer));
@@ -111,27 +119,25 @@ class RecordManager {
           }
         }
       }
+      return tuple_;
     }
 
-    void extractPostion(Position& pos) {
-      pos.block_id = p_vec_blk_id->data()[blk_idx];
-      pos.offset = p - cur_blk->val_;
+    Position extractPostion() {
+      Position pos;
+      pos.block_id = block_id_[blk_idx_];
+      pos.offset = data_ - cur_blk_->val_;
+      return pos;
     }
 
     void deleteRecord() {
-      cur_blk->dirty_ = true;
-      *p = 0;
-      if (p + cur_md.record_len == cur_blk->val_ + cur_md.record_end) {
-        for (char* tmp = p; tmp >= cur_blk->val_ && !*tmp;
-             tmp -= cur_md.record_len, cur_md.record_end -= cur_md.record_len)
-          ;
-      }
+      cur_blk_->dirty_ = true;
+      *data_ = 0;
     }
 
     void modifyData(const Tuple& tuple) {
-      cur_blk->dirty_ = true;
-      *p = 1;
-      char* tmp = p + 1;
+      cur_blk_->dirty_ = true;
+      *data_ = 1;
+      char* tmp = data_ + 1;
       for (auto& v : tuple.values) {
         switch (v.type) {
           case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
@@ -154,79 +160,69 @@ class RecordManager {
     }
   };
 
-  struct RecordIterator {
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = ptrdiff_t;
-    using value_type = RecordAccessProxy;
-    using pointer = value_type*;
-    using reference = value_type&;
-    using iterator_type = RecordIterator;
-
-    RecordIterator(bool state, vector<size_t>* p_blks, size_t blk_idx)
-        : m(p_blks, blk_idx), valid(state) {}
-
-    reference operator*() { return m; }
-    pointer operator->() { return &m; }
-
-    RecordIterator& operator++() {
-      valid = m.next();
-      return *this;
-    }
-
-    RecordIterator operator++(int) {
-      RecordIterator tmp = *this;
-      ++(*this);
-      return tmp;
-    }
-
-    friend bool operator==(const RecordIterator& a, const RecordIterator& b) {
-      if (a.valid != b.valid) {
-        return false;
-      }
-      if (a.valid == false) {
-        return true;
-      }
-      return memcmp(&a.m, &b.m, sizeof(RecordAccessProxy)) == 0;
-    };
-
-    friend bool operator!=(const RecordIterator& a, const RecordIterator& b) {
-      if (a.valid != b.valid) {
-        return true;
-      }
-      if (a.valid == false) {
-        return false;
-      }
-      return memcmp(&a.m, &b.m, sizeof(RecordAccessProxy)) != 0;
-    };
-
-   private:
-    value_type m;
-    bool valid;
-  };
-
   class TableProxy {
    public:
-    using iterator_type = RecordIterator;
-    iterator_type begin() { return RecordIterator(true, p_blks, 0); }
-    iterator_type end() { return RecordIterator(false, p_blks, 0); }
-    TableProxy(vector<size_t>* p, const Table* info)
-        : p_table_info(info), p_blks(p) {}
+    TableProxy(vector<size_t>& blk_id, const Table& table)
+        : access_(blk_id, table, 0), table_(table), blk_id_(blk_id) {
+      if (blk_id.empty()) {
+        access_.newBlock();
+      }
+    }
+
+    void insertRecord(const Tuple& tuple) {
+      while (access_.isCurrentSlotValid()) {
+        if (!access_.next()) {
+          access_.newBlock();
+        }
+      }
+      access_.modifyData(tuple);
+    }
+
+    void deleteRecord(const vector<Condition>& conds) {
+      checkConditionValid(conds);
+      RecordAccessProxy rap(blk_id_, table_, 0);
+      do {
+        if (!rap.isCurrentSlotValid()) continue;
+
+      } while (rap.next());
+    }
+
+    vector<Tuple> selectRecord(const vector<Condition>& conds) {
+      vector<Tuple> res;
+      checkConditionValid(conds);
+      RecordAccessProxy rap(blk_id_, table_, 0);
+      do {
+        if (!rap.isCurrentSlotValid()) continue;
+
+      } while (rap.next());
+      return res;
+    }
 
    private:
-    const Table* p_table_info;
-    vector<size_t>* p_blks;
+    void checkConditionValid(const vector<Condition>& conds) {
+      for (auto& cond : conds)
+        if (!table_.attributes.contains(cond.attribute)) {
+          std::cerr << "no such an attribute `" ANSI_COLOR_RED << cond.attribute
+                    << ANSI_COLOR_RESET "`referenced in condition" << std::endl;
+          throw std::runtime_error("invalid attribute name");
+        }
+    }
+
+    bool checkTupleSatisfyCondition() {}
+  
+    RecordAccessProxy access_;
+    const Table& table_;
+    vector<size_t>& blk_id_;
   };
 
   map<std::string, vector<size_t>> table_blocks;
-
-  size_t nextAvailingBlock();
 
  public:
   RecordManager();
   ~RecordManager();
   bool createTable(const Table& table);
   bool dropTable(const Table& table);
-  TableProxy operator[](const Table& table_name);
+  TableProxy operator[](const string &table_name);
 };
 
 extern RecordManager record_manager;

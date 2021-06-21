@@ -7,8 +7,6 @@ using std::vector;
 
 #include "DataStructure.hpp"
 
-namespace API {
-
 /**
  * @brief Create a table
  *
@@ -69,4 +67,3 @@ void Insert(const string &table_name, const Tuple &tuple);
  * records.
  */
 void Delete(const string &table_name, const vector<Condition> &conditions);
-}  // namespace API

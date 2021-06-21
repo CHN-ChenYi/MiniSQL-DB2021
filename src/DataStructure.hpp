@@ -15,6 +15,15 @@ using std::tuple;
 using std::vector;
 
 namespace Config {
+
+#define ANSI_COLOR_RED "\x1b[31m"
+#define ANSI_COLOR_GREEN "\x1b[32m"
+#define ANSI_COLOR_YELLOW "\x1b[33m"
+#define ANSI_COLOR_BLUE "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN "\x1b[36m"
+#define ANSI_COLOR_RESET "\x1b[0m"
+
 const int kMaxStringLength = 256;
 const int kBlockSize = 4096;
 #ifdef _DEBUG
@@ -103,6 +112,16 @@ struct Table {
    * @param os the ofstream
    */
   void write(ofstream &os) const;
+
+  /**
+   * @brief get the size (in bytes) of each attribute
+   */
+  size_t getAttributeSize() const;
+
+  /**
+   * @brief make an empty tuple according to the attributes
+   */
+  Tuple makeEmptyTuple() const;
 };
 
 struct Block {

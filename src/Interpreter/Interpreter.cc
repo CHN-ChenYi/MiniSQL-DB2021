@@ -17,19 +17,12 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 
 #include "API.hpp"
 #include "DataStructure.hpp"
-
-#define ANSI_COLOR_RED "\x1b[31m"
-#define ANSI_COLOR_GREEN "\x1b[32m"
-#define ANSI_COLOR_YELLOW "\x1b[33m"
-#define ANSI_COLOR_BLUE "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN "\x1b[36m"
-#define ANSI_COLOR_RESET "\x1b[0m"
 
 using std::cerr;
 using std::cin;
@@ -71,7 +64,6 @@ void Interpreter::interpret() {
     try {
       need_quit = parseLine();
     } catch (...) {
-      throw;
     }
     if (need_quit) break;
   }
@@ -101,6 +93,7 @@ bool Interpreter::interpretFile(const path &filename) {
     bool need_quit = false;
     try {
       need_quit = parse();
+    } catch (const syntax_error &err) {
     } catch (...) {
       throw;
     }
@@ -168,7 +161,7 @@ void Interpreter::expect(string_view s) {
        << ANSI_COLOR_RESET "` but got `" ANSI_COLOR_RED;
   outputUntilNextSpace();
   cerr << ANSI_COLOR_RESET "`" << endl;
-  throw std::runtime_error("can't find expected token");
+  throw syntax_error("can't find expected token");
 }
 
 bool Interpreter::consume(string_view s) {
@@ -220,7 +213,7 @@ void Interpreter::parseAttribute() {
     parseNumber();
     if (cur_tok.kind != TokenKind::Int ||
         (cur_tok.i < 0 || cur_tok.i >= Config::kMaxStringLength))
-      throw std::runtime_error("invalid length of char");
+      throw syntax_error("invalid length of char");
     val_type = static_cast<SqlValueType>(SqlValueTypeBase::String) +
                (unsigned)cur_tok.i;
     expect(")");
@@ -251,7 +244,7 @@ void Interpreter::parseConstraint() {
   }
   if (!found) {
     cerr << "no such attribute named `" << cur_tok.sv << "`" << endl;
-    throw std::runtime_error("constraint failed");
+    throw syntax_error("constraint failed");
   }
   expect(")");
 }
@@ -302,7 +295,7 @@ void Interpreter::parseNumber() {
   cerr << "expect a number but got `" ANSI_COLOR_RED;
   outputUntilNextSpace();
   cerr << ANSI_COLOR_RESET "`" << endl;
-  throw std::runtime_error("can't find expected token");
+  throw syntax_error("can't find expected token");
 }
 
 void Interpreter::parseStringLiteral() {
@@ -331,7 +324,7 @@ void Interpreter::parseStringLiteral() {
             "`" ANSI_COLOR_RED;
     outputUntilNextSpace();
     cerr << ANSI_COLOR_RESET "`" << endl;
-    throw std::runtime_error("can't find expected token");
+    throw syntax_error("can't find expected token");
   }
   cur_tok = Token{
       .kind = TokenKind::StrLit, .sv = string_view(begin, end), .f = 0, .i = 0};
@@ -339,7 +332,7 @@ void Interpreter::parseStringLiteral() {
     cerr << "expect valid string literal of which length is [1, 256), and we "
             "got " ANSI_COLOR_RED
          << cur_tok.sv.length() << ANSI_COLOR_RESET << endl;
-    throw std::runtime_error("invalid string literal length");
+    throw syntax_error("invalid string literal length");
   }
 }
 
@@ -359,7 +352,7 @@ void Interpreter::parseId() {
           "[A-Za-z][A-Za-z0-9]*" ANSI_COLOR_RESET "` but got `" ANSI_COLOR_RED;
   outputUntilNextSpace();
   cerr << ANSI_COLOR_RESET "`" << endl;
-  throw std::runtime_error("can't find expected token");
+  throw syntax_error("can't find expected token");
 }
 
 void Interpreter::parseRelOp() {
@@ -380,7 +373,7 @@ void Interpreter::parseRelOp() {
             "< > <= >= <> =" ANSI_COLOR_RESET " but got `" ANSI_COLOR_RED;
     outputUntilNextSpace();
     cerr << ANSI_COLOR_RESET "`" << endl;
-    throw std::runtime_error("can't find expected token");
+    throw syntax_error("can't find expected token");
   }
   cur_tok = Token{.kind = TokenKind::RelOp, .sv = ops[idx], .f = 0, .i = 0};
 }
@@ -397,6 +390,8 @@ void Interpreter::parseCreateTable() {
 #ifdef _DEBUG
   cout << "DEBUG: create a table named `" << table_name.sv << "`" << endl;
 #endif
+
+  CreateTable(string(table_name.sv), cur_attributes);
 }
 
 void Interpreter::parseCreateIndex() {
@@ -448,7 +443,7 @@ void Interpreter::parseExec() {
   auto path_end_pos = input.find_last_of(";.", line_end_pos);
   if (path_end_pos == input.npos) {
     cerr << "not correct format of execfile" << endl;
-    throw std::runtime_error("wrong execfile sentence");
+    throw syntax_error("wrong execfile sentence");
   }
   auto len = path_end_pos - (iter - input.begin());
   path file_path(string(&*iter, len));
@@ -568,6 +563,13 @@ void Interpreter::parseInsertStat() {
     cout << "  " << v << endl;
   }
 #endif
+
+  Tuple t;
+  for (auto &v : cur_values) {
+    t.values.push_back(tokenToSqlValue(v));
+  }
+
+  Insert(string(table_name.sv), t);
 }
 
 void Interpreter::parseWhereClause() {
@@ -604,7 +606,7 @@ Operator Interpreter::tokenToRelOp(const Token &tok) {
       {"<=", Operator::LE}, {"=", Operator::EQ}, {"<>", Operator::NE},
   };
   if (!tok2op.contains(tok.sv)) {
-    throw std::runtime_error("not correct op");
+    throw syntax_error("not correct op");
   }
   return tok2op[tok.sv];
 }

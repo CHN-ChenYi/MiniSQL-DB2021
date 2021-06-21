@@ -1,5 +1,8 @@
 #include "DataStructure.hpp"
 
+#include <corecrt.h>
+
+
 void Table::read(ifstream &is) {
   size_t size;
   is.read(reinterpret_cast<char *>(&size), sizeof(size));
@@ -76,4 +79,35 @@ void Table::write(ofstream &os) const {
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
     os.write(index.second.c_str(), sizeof(char) * size);
   }
+}
+
+size_t Table::getAttributeSize() const {
+  size_t len = 0;
+  for (auto &[_1, attr] : attributes) {
+    auto &[_2, type, _3, _4] = attr;
+    switch (type) {
+      case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
+        len += sizeof(int);
+        break;
+      case static_cast<SqlValueType>(SqlValueTypeBase::Float):
+        len += sizeof(float);
+        break;
+      default: {
+        len += type - static_cast<SqlValueType>(SqlValueTypeBase::String);
+        break;
+      }
+    }
+  }
+  return len;
+}
+
+Tuple Table::makeEmptyTuple() const {
+  size_t cnt = attributes.size();
+  Tuple res;
+  res.values.resize(cnt);
+  for (auto &[_1, attr] : attributes) {
+    auto &[idx, type, _3, _4] = attr;
+    res.values[idx].type = type;
+  }
+  return res;
 }

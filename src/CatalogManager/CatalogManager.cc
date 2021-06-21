@@ -31,7 +31,7 @@ CatalogManager::~CatalogManager() {
 bool CatalogManager::CreateTable(
     const string &table_name,
     const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes) {
-  if (tables_.contains(table_name)) return false;
+  if (tables_.contains(table_name)) return true;
   size_t index = 0, offset = 0;
   Table table;
   table.table_name = table_name;
