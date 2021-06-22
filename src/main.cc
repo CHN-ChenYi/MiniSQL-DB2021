@@ -4,13 +4,16 @@
 #include <ios>
 #include <iostream>
 
+#include "DataStructure.hpp"
 #include "Interpreter.hpp"
 
 volatile std::sig_atomic_t interrupt = 0;
 
 int main(int argc, char **argv) {
   std::signal(SIGINT, [](int) -> void {
-    std::cout << "Please use `quit;` instead of `CTRL-C` the next time." << std::endl;
+    std::cout << ANSI_COLOR_RED
+        "Please use `quit;` instead of `CTRL-C` the next time." ANSI_COLOR_RESET
+              << std::endl;
     interrupt = 1;
   });
 

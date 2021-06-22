@@ -46,12 +46,12 @@ class BufferManager {
   static Block *Read(const size_t &block_id);
 
   /**
-   * @brief write a new block (CAUTION: the block should **NOT** be deleted)
+   * @brief create a new block (CAUTION: the block should **NOT** be deleted)
    *
    * @param block a pointer to the block
    * @return the id of the block
    */
-  static size_t Write(Block *block);
+  static size_t Create(Block *block);
 
   /**
    * @brief get the id of the next new block

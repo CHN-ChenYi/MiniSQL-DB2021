@@ -80,7 +80,7 @@ void BufferManager::AddBlockToBuffer(const size_t &block_id,
 Block *BufferManager::Read(const size_t &block_id) {
   if (block_id == max_block_id) {
     Block *block = new Block;
-    Write(block);
+    Create(block);
     return block;
   }
   if (block_id > max_block_id)
@@ -97,10 +97,10 @@ Block *BufferManager::Read(const size_t &block_id) {
   return iter->second.block;
 }
 
-size_t BufferManager::Write(Block *block) {
+size_t BufferManager::Create(Block *block) {
   const auto block_id = max_block_id++;
-  WriteToFile(block_id, block);
-  if (buffer.find(block_id) == buffer.end()) AddBlockToBuffer(block_id, block);
+  block->dirty_ = true;
+  AddBlockToBuffer(block_id, block);
   return block_id;
 }
 
