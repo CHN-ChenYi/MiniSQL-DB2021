@@ -5,15 +5,21 @@
 using std::unordered_map;
 
 #include "DataStructure.hpp"
+#ifdef ParallelWrite
+#include "TaskPool.hpp"
+#endif
 
 // CAUTION: should have only **ONE** instance at a time
 class BufferManager {
-  static size_t max_block_id;
+  static size_t max_block_id_;
   struct BlockInfo {
     Block *const block;
     std::chrono::time_point<std::chrono::system_clock> last_access_time;
   };
-  static unordered_map<size_t, BlockInfo> buffer;
+  static unordered_map<size_t, BlockInfo> buffer_;
+#ifdef ParallelWrite
+  static TaskPool task_pool_;
+#endif
 
   /**
    * @brief add a block into the buffer
@@ -22,6 +28,8 @@ class BufferManager {
    * @param block a pointer to the block
    */
   static void AddBlockToBuffer(const size_t &block_id, Block *const block);
+
+  static void WriteToFile(const size_t &block_id, Block *block);
 
  public:
   /**

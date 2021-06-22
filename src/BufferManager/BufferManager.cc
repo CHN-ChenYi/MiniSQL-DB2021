@@ -10,20 +10,30 @@
 #include <iostream>
 #endif
 
-size_t BufferManager::max_block_id;
-unordered_map<size_t, BufferManager::BlockInfo> BufferManager::buffer;
+size_t BufferManager::max_block_id_;
+unordered_map<size_t, BufferManager::BlockInfo> BufferManager::buffer_;
+#ifdef ParallelWrite
+TaskPool BufferManager::task_pool_;
+#endif
 BufferManager buffer_manager;
 
 static bool CheckFileExists(const std::string &filename) {
   return std::filesystem::exists(filename);
 }
 
-static void WriteToFile(const size_t &block_id, Block *block) {
-  std::ofstream os(Block::GetBlockFilename(block_id), std::ios::binary);
-  block->write(os);
-  block->dirty_ = false;
+void BufferManager::WriteToFile(const size_t &block_id, Block *block) {
+#ifdef ParallelWrite
+  if (task_pool_.Exec(block_id, [block_id, block]() {
+#endif
+        std::ofstream os(Block::GetBlockFilename(block_id), std::ios::binary);
+        block->write(os);
+        delete block;
 #ifdef _DEBUG
-  std::cerr << "Write back block " << block_id << std::endl;
+        std::cerr << "Write back block " << block_id << std::endl;
+#endif
+#ifdef ParallelWrite
+      }))
+    throw std::runtime_error("Block is busy");
 #endif
 }
 
@@ -37,26 +47,28 @@ BufferManager::BufferManager() {
     else
       r = m;
   }
-  max_block_id = l;
+  max_block_id_ = l;
 }
 
 BufferManager::~BufferManager() {
-  for (const auto &it : buffer) {
-    if (it.second.block->dirty_) WriteToFile(it.first, it.second.block);
-    delete it.second.block;
+  for (const auto &it : buffer_) {
+    if (it.second.block->dirty_)
+      WriteToFile(it.first, it.second.block);
+    else
+      delete it.second.block;
   }
 }
 
 void BufferManager::AddBlockToBuffer(const size_t &block_id,
                                      Block *const block) {
   auto block_info = BlockInfo{block, std::chrono::high_resolution_clock::now()};
-  if (buffer.size() == Config::kMaxBlockNum) {
+  if (buffer_.size() == Config::kMaxBlockNum) {
     size_t least_recently_used_block_id;
     Block *least_recently_used_block = nullptr;
     auto least_recently_used_time =
         std::chrono::high_resolution_clock::now() +
         std::chrono::seconds(1);  // +1s to solve the resolution problem
-    for (const auto &it : buffer) {
+    for (const auto &it : buffer_) {
       if (!it.second.block->pin_ &&
           it.second.last_access_time < least_recently_used_time) {
         least_recently_used_block_id = it.first;
@@ -71,22 +83,26 @@ void BufferManager::AddBlockToBuffer(const size_t &block_id,
 #endif
     if (least_recently_used_block->dirty_)
       WriteToFile(least_recently_used_block_id, least_recently_used_block);
-    delete least_recently_used_block;
-    buffer.erase(least_recently_used_block_id);
+    else
+      delete least_recently_used_block;
+    buffer_.erase(least_recently_used_block_id);
   }
-  buffer.insert(std::make_pair(block_id, block_info));
+  buffer_.insert(std::make_pair(block_id, block_info));
 }
 
 Block *BufferManager::Read(const size_t &block_id) {
-  if (block_id == max_block_id) {
+  if (block_id == max_block_id_) {
     Block *block = new Block;
     Create(block);
     return block;
   }
-  if (block_id > max_block_id)
+  if (block_id > max_block_id_)
     throw std::out_of_range("block_id out of range");
-  auto iter = buffer.find(block_id);
-  if (iter == buffer.end()) {
+  auto iter = buffer_.find(block_id);
+  if (iter == buffer_.end()) {
+#ifdef ParallelWrite
+    task_pool_.Wait(block_id);
+#endif
     std::ifstream is(Block::GetBlockFilename(block_id), std::ios::binary);
     auto block = new Block;
     block->read(is);
@@ -98,12 +114,10 @@ Block *BufferManager::Read(const size_t &block_id) {
 }
 
 size_t BufferManager::Create(Block *block) {
-  const auto block_id = max_block_id++;
+  const auto block_id = max_block_id_++;
   block->dirty_ = true;
   AddBlockToBuffer(block_id, block);
   return block_id;
 }
 
-size_t BufferManager::NextId() {
-  return max_block_id;
-}
+size_t BufferManager::NextId() { return max_block_id_; }

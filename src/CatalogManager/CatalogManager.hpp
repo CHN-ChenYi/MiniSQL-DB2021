@@ -7,7 +7,7 @@ using std::unordered_map;
 
 struct CatalogBlock : public Block {};
 
-class CatalogManager {  // TODO(TO/GA): test
+class CatalogManager {
   unordered_map<string, Table> tables_;
   inline static const string kCatalogFileName = "Catalog.data";
 
