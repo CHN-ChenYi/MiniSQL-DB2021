@@ -61,14 +61,21 @@ void Interpreter::interpret() {
     cur_conditions.clear();
 
     cout << ANSI_COLOR_BLUE "MiniSQL > " ANSI_COLOR_RESET;
-    getline(cin, input);
+    if (!getline(cin, input)) {
+      cout << endl;
+      break;
+    }
     iter = input.begin();
     bool need_quit = false;
     try {
-      need_quit = parseLine();
-    } catch (...) {
+      need_quit = parse();
+    } catch (const syntax_error &err) {
     }
-    if (need_quit || interrupt) break;
+    if (need_quit) break;
+    if (interrupt) {
+      cout << endl;
+      break;
+    }
   }
 }
 
@@ -97,8 +104,6 @@ bool Interpreter::interpretFile(const path &filename) {
     try {
       need_quit = parse();
     } catch (const syntax_error &err) {
-    } catch (...) {
-      throw;
     }
     if (need_quit) break;
     skipSpace();

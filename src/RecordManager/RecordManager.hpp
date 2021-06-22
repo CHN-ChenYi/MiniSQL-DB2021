@@ -14,6 +14,7 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <unordered_map>
 
 #include "BufferManager.hpp"
 #include "DataStructure.hpp"
@@ -206,8 +207,8 @@ class RecordManager {
     return res;
   }
 
-  map<std::string, vector<size_t>> table_blocks;
-  map<std::string, RecordAccessProxy> table_current;
+  unordered_map<std::string, vector<size_t>> table_blocks;
+  unordered_map<std::string, RecordAccessProxy> table_current;
 
  public:
   RecordManager();
