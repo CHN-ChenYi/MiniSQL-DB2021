@@ -1,3 +1,4 @@
+#include <csignal>
 #include <exception>
 #include <filesystem>
 #include <ios>
@@ -5,7 +6,14 @@
 
 #include "Interpreter.hpp"
 
+volatile std::sig_atomic_t interrupt = 0;
+
 int main(int argc, char **argv) {
+  std::signal(SIGINT, [](int) -> void {
+    std::cout << "Please use `quit;` instead of `CTRL-C` the next time." << std::endl;
+    interrupt = 1;
+  });
+
   std::ios_base::sync_with_stdio(false);
   try {
     if (argc == 1) {

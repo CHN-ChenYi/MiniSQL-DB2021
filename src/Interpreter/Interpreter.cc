@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cctype>
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
@@ -51,6 +52,7 @@ int icasecmp(const char *s1, const char *s2, size_t n) {
 }
 
 void Interpreter::interpret() {
+  extern volatile std::sig_atomic_t interrupt;
   for (;;) {
     cur_tok = table_name = index_name = indexed_column_name = TokenNone;
     cur_attributes.clear();
@@ -66,7 +68,7 @@ void Interpreter::interpret() {
       need_quit = parseLine();
     } catch (...) {
     }
-    if (need_quit) break;
+    if (need_quit || interrupt) break;
   }
 }
 
