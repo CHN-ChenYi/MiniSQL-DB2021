@@ -13,8 +13,8 @@ class IndexManager {
    * @param conditions the specified conditions (must be based on the index key)
    * @return selected records
    */
-  static vector<Tuple> SelectRecord(const string &index,
-                                    const vector<Condition> &conditions) {}
+  vector<Tuple> SelectRecord(const string &index,
+                             const vector<Condition> &conditions) {}
 };
 
 extern IndexManager index_manager;
