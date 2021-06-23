@@ -32,7 +32,7 @@ void DropTable(const string &table_name);
  * @param index_name the name of the index
  * @param column the column to be created an index on
  */
-void CreateIndex(const string &table_name, const string &index_name,
+bool CreateIndex(const string &table_name, const string &index_name,
                  const string &column);
 
 /**

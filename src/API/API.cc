@@ -1,6 +1,7 @@
 #include "API.hpp"
 #include "CatalogManager.hpp"
 #include "RecordManager.hpp"
+#include "IndexManager.hpp"
 
 bool CreateTable(
     const string &table_name,
@@ -12,8 +13,12 @@ bool CreateTable(
 
 void DropTable(const string &table_name) {}
 
-void CreateIndex(const string &table_name, const string &index_name,
-                 const string &column) {}
+bool CreateIndex(const string &table_name,
+                 const string &index_name,
+                 const string &column) {
+  if (!index_manager.CreateIndex(table_name, index_name, column)) return false;
+  return true;
+}
 
 void DropIndex(const string &index_name) {}
 
