@@ -127,10 +127,12 @@ class RecordManager {
       return tuple_;
     }
 
+    char* getRawData() { return data_ + 1; }
+
     Position extractPostion() {
       Position pos;
       pos.block_id = p_block_id_->data()[blk_idx_];
-      pos.offset = data_ - cur_blk_->val_;
+      pos.offset = data_ - cur_blk_->val_ + 1 /* skip the 1-byte tag */;
       return pos;
     }
 
@@ -184,6 +186,71 @@ class RecordManager {
 
   bool checkTupleSatisfyCondition() { return true; }
 
+  bool rawCompare(Operator op, SqlValue val, size_t offset, char* record) {
+    switch (val.type) {
+      case static_cast<SqlValueType>(SqlValueTypeBase::Integer): {
+        int record_num;
+        memcpy(&record_num, record + offset, sizeof(record_num));
+        switch (op) {
+          case Operator::GT:
+            return record_num > val.val.Integer;
+            break;
+          case Operator::GE:
+            return record_num >= val.val.Integer;
+            break;
+          case Operator::LT:
+            return record_num < val.val.Integer;
+            break;
+          case Operator::LE:
+            return record_num <= val.val.Integer;
+            break;
+          case Operator::EQ:
+            return record_num == val.val.Integer;
+            break;
+          case Operator::NE:
+            return record_num != val.val.Integer;
+            break;
+          default:
+            assert(0);
+        }
+        break;
+      }
+      case static_cast<SqlValueType>(SqlValueTypeBase::Float): {
+        float record_num;
+        memcpy(&record_num, record + offset, sizeof(record_num));
+        switch (op) {
+          case Operator::GT:
+            return record_num > val.val.Float;
+            break;
+          case Operator::GE:
+            return record_num >= val.val.Float;
+            break;
+          case Operator::LT:
+            return record_num < val.val.Float;
+            break;
+          case Operator::LE:
+            return record_num <= val.val.Float;
+            break;
+          case Operator::EQ:
+            return record_num == val.val.Float;
+            break;
+          case Operator::NE:
+            return record_num != val.val.Float;
+            break;
+          default:
+            assert(0);
+        }
+        break;
+      }
+      default:
+        switch (op) {
+          default:
+            assert(0);
+        }
+        break;
+    }
+  }
+
   void deleteRecord(const Table& table, const vector<Condition>& conds) {
     checkTableName(table);
     checkConditionValid(table, conds);
@@ -216,7 +283,7 @@ class RecordManager {
   bool createTable(const Table& table);
   bool dropTable(const Table& table);
 
-  void insertRecord(const Table& table, const Tuple& tuple) {
+  Position insertRecord(const Table& table, const Tuple& tuple) {
     checkTableName(table);
     auto& access = table_current[table.table_name];
     while (access.isCurrentSlotValid()) {
@@ -225,6 +292,7 @@ class RecordManager {
       }
     }
     access.modifyData(tuple);
+    return access.extractPostion();
   }
 
   vector<Tuple> selectAllRecord(const Table& table) {
