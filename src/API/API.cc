@@ -16,7 +16,7 @@ void DropTable(const string &table_name) {}
 bool CreateIndex(const string &table_name,
                  const string &index_name,
                  const string &column) {
-  if (!index_manager.CreateIndex(table_name, index_name, column)) return false;
+  if (!index_manager.CreateIndex(catalog_manager.TableInfo(table_name), index_name, column)) return false;
   return true;
 }
 

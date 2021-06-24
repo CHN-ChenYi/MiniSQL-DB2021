@@ -1,30 +1,50 @@
 #pragma once
 
+#include <map>
+#include <unordered_map>
+
 #include "DataStructure.hpp"
 #include "CatalogManager.hpp"
 #include "BufferManager.hpp"
 
+#include <unordered_map>
+using std::unordered_map;
+
 struct IndexBlock : public Block {};
 
 class IndexManager {
+    inline static const string kIndexFileName = "Index.data";
+    unordered_map<std::string, size_t> index_blocks;
+
  public:
+  /**
+   * @brief Construct a new Index Manager object. Open the file.
+   */
     IndexManager();
+
+  /**
+   * @brief Destroy the Index Manager object. Write back to the file.
+   */
     ~IndexManager();
+
   /**
    * @brief Create a new index
    *
-   * @param table_name the name of the table on which we build index
+   * @param table the table on which we build index
    * @param index_name the name of the index itself
    * @param column the key value used by the index
    */
-    bool CreateIndex(const string &table_name, const string &index_name,
+    bool CreateIndex(const Table &table, const string &index_name,
                  const string &column);
+
   /**
    * @brief delete an index
    *
+   * @param table the table with the index to be droped
    * @param index_name the name of the index to be deleted
    */
-    bool DeleteIndex(const string &index_name);
+    bool DropIndex(const Table &table, const string &index_name);
+
   /**
    * @brief insert a new key into an index
    *
@@ -35,6 +55,7 @@ class IndexManager {
     bool InsertKey(const string &index_name,
                  tuple<string, SqlValueType, SpecialAttribute> &attributes,
                  Position &pos);
+
   /**
    * @brief delete a key from an index
    *
@@ -43,6 +64,7 @@ class IndexManager {
    */
     bool RemoveKey(const string &index_name,
                     tuple<string, SqlValueType, SpecialAttribute> &attributes);
+
   /**
    * @brief Select specified records by an index
    *
