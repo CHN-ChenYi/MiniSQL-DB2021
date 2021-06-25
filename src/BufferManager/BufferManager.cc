@@ -7,7 +7,14 @@
 #include <utility>
 
 #ifdef _DEBUG
+// #define BufferDebug
+#ifdef BufferDebug
 #include <iostream>
+#endif
+#endif
+
+#ifdef ParallelWrite
+#include <sstream>
 #endif
 
 size_t BufferManager::max_block_id_;
@@ -22,18 +29,24 @@ static bool CheckFileExists(const std::string &filename) {
 }
 
 void BufferManager::WriteToFile(const size_t &block_id, Block *block) {
+#ifdef BufferDebug
+  std::cerr << "Writing back block " << block_id << std::endl;
+#endif
 #ifdef ParallelWrite
   if (task_pool_.Exec(block_id, [block_id, block]() {
 #endif
         std::ofstream os(Block::GetBlockFilename(block_id), std::ios::binary);
         block->write(os);
         delete block;
-#ifdef _DEBUG
-        std::cerr << "Write back block " << block_id << std::endl;
+#ifdef BufferDebug
+        std::cerr << "Written back block " << block_id << std::endl;
 #endif
 #ifdef ParallelWrite
-      }))
-    throw std::runtime_error("Block is busy");
+      })) {
+    std::stringstream err_msg;
+    err_msg << "Block " << block_id << " is busy";
+    throw std::runtime_error(err_msg.str());
+  }
 #endif
 }
 
@@ -78,19 +91,22 @@ void BufferManager::AddBlockToBuffer(const size_t &block_id,
     }
     if (least_recently_used_block == nullptr)
       throw std::overflow_error("buffer overflow");
-#ifdef _DEBUG
+#ifdef BufferDebug
     std::cerr << "Swap out block " << least_recently_used_block_id << std::endl;
 #endif
+    buffer_.erase(least_recently_used_block_id);
     if (least_recently_used_block->dirty_)
       WriteToFile(least_recently_used_block_id, least_recently_used_block);
     else
       delete least_recently_used_block;
-    buffer_.erase(least_recently_used_block_id);
   }
   buffer_.insert(std::make_pair(block_id, block_info));
 }
 
 Block *BufferManager::Read(const size_t &block_id) {
+#ifdef BufferDebug
+  std::cerr << "Read block " << block_id << std::endl;
+#endif
   if (block_id == max_block_id_) {
     Block *block = new Block;
     Create(block);
@@ -115,6 +131,9 @@ Block *BufferManager::Read(const size_t &block_id) {
 
 size_t BufferManager::Create(Block *block) {
   const auto block_id = max_block_id_++;
+#ifdef BufferDebug
+  std::cerr << "Create block " << block_id << std::endl;
+#endif
   block->dirty_ = true;
   AddBlockToBuffer(block_id, block);
   return block_id;
