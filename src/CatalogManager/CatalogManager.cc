@@ -63,4 +63,8 @@ const Table &CatalogManager::TableInfo(const string &table_name) {
   return tables_[table_name];
 }
 
+void CatalogManager::DropTable(const string &table_name) {
+  tables_.erase(table_name);
+}
+
 CatalogManager catalog_manager;

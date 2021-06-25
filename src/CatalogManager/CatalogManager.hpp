@@ -41,7 +41,14 @@ class CatalogManager {
    * @param table_name the name of the table
    * @return the information of the table
    */
-  const Table& TableInfo(const string &table_name);
+  const Table &TableInfo(const string &table_name);
+
+  /**
+   * @brief Drop a table
+   *
+   * @param table_name the name of the table
+   */
+  void DropTable(const string &table_name);
 
   void PrintTables() const {
     // TODO
