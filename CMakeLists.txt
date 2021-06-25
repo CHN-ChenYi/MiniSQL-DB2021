@@ -9,7 +9,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -D_DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 
-OPTION(ParallelWrite "Use new threads for writing blocks" ON)
+OPTION(ParallelWrite "Use new threads for writing blocks" OFF)
 if (ParallelWrite)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DParallelWrite")
     message("ParallelWrite set")

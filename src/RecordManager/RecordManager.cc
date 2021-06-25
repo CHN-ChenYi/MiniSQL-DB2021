@@ -41,7 +41,6 @@ RecordManager::RecordManager() {
       is.read(reinterpret_cast<char *>(&block_id), sizeof(block_id));
       blks.push_back(block_id);
     }
-
     table_blocks[table_name] = blks;
   }
 }

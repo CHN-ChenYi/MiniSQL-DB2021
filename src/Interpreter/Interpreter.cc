@@ -437,6 +437,9 @@ void Interpreter::parseDropIndex() {
   expect("index"sv);
   parseId();
   index_name = cur_tok;
+  expect("on"sv);
+  parseId();
+  table_name = cur_tok;
   parseStatEnd();
 #ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: drop a index named `" << index_name.sv << "`" << endl;
@@ -552,6 +555,8 @@ void Interpreter::parseDeleteStat() {
     }
   }
 #endif
+
+  Delete(string(table_name.sv), cur_conditions);
 }
 
 void Interpreter::parseInsertStat() {
@@ -592,23 +597,31 @@ void Interpreter::parseWhereClause() {
 void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
   switch (tok.kind) {
     case Interpreter::TokenKind::Int:
-      if (val.type != static_cast<SqlValueType>(SqlValueTypeBase::Integer)) {
+      if (val.type >= static_cast<SqlValueType>(SqlValueTypeBase::String)) {
         cerr << "the types of the table and values don't match" << endl;
         throw syntax_error("type error");
       }
-      val.val.Integer = tok.i;
+      if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
+        val.val.Integer = tok.i;
+      else
+        val.val.Integer = tok.f;
       break;
     case Interpreter::TokenKind::Float:
-      if (val.type != static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
+      if (val.type >= static_cast<SqlValueType>(SqlValueTypeBase::String)) {
         cerr << "the types of the table and values don't match" << endl;
         throw syntax_error("type error");
       }
-      val.val.Float = tok.f;
+      if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
+        val.val.Float = tok.i;
+      else
+        val.val.Float = tok.f;
       break;
     case Interpreter::TokenKind::StrLit:
       if (val.type < tok.sv.length() +
                          static_cast<SqlValueType>(SqlValueTypeBase::String)) {
-        cerr << "string length exceeded" << endl;
+        cerr << "the types of the table and values don't match: requires a "
+                "string"
+             << endl;
         throw syntax_error("type error");
       }
       memcpy(val.val.String, tok.sv.data(), tok.sv.size());

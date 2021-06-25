@@ -108,9 +108,5 @@ class Interpreter {
   friend std::ostream &operator<<(std::ostream &out, const Token &tok);
 };
 
-class syntax_error : public std::runtime_error {
- public:
-  syntax_error(const char *what) : runtime_error(what) {}
-};
 
 extern Interpreter interpreter;

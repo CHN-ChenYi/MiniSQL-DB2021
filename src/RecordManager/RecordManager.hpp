@@ -13,8 +13,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "BufferManager.hpp"
 #include "DataStructure.hpp"
@@ -171,20 +171,36 @@ class RecordManager {
     for (auto& cond : conds)
       if (!table.attributes.contains(cond.attribute)) {
         std::cerr << "no such an attribute `" ANSI_COLOR_RED << cond.attribute
-                  << ANSI_COLOR_RESET "`referenced in condition" << std::endl;
+                  << ANSI_COLOR_RESET " `referenced in condition" << std::endl;
         throw syntax_error("invalid attribute name");
       }
   }
 
   void checkTableName(const Table& table) {
-    if (!table_current.contains(table.table_name) ||
-        !table_blocks.contains(table.table_name)) {
+    if (!table_blocks.contains(table.table_name)) {
       std::cerr << "such a table doesn't exist" << std::endl;
       throw syntax_error("table not found");
     }
   }
 
-  bool checkTupleSatisfyCondition() { return true; }
+  vector<tuple<Operator, SqlValue, size_t>> convertConditions(
+      const Table& table, const vector<Condition> conds) {
+    vector<tuple<Operator, SqlValue, size_t>> res;
+    for (auto& cond : conds) {
+      auto& [_1, _2, _3, offset] =
+          table.attributes.find(cond.attribute)->second;
+      res.push_back({cond.op, cond.val, offset});
+    }
+    return res;
+  }
+
+  bool checkRecordSatisfyCondition(
+      const vector<tuple<Operator, SqlValue, size_t>>& conds, char* record) {
+    for (auto& [op, val, offset] : conds) {
+      if (!rawCompare(op, val, offset, record)) return false;
+    }
+    return true;
+  }
 
   bool rawCompare(Operator op, SqlValue val, size_t offset, char* record) {
     switch (val.type) {
@@ -242,36 +258,36 @@ class RecordManager {
         }
         break;
       }
-      default:
+      default: {
+        size_t len =
+            val.type - static_cast<SqlValueType>(SqlValueTypeBase::String);
+        char buf[Config::kMaxStringLength] = {0};
+        memcpy(buf, record + offset, len);
         switch (op) {
+          case Operator::GT:
+            return strncmp(buf, val.val.String, len) > 0;
+            break;
+          case Operator::GE:
+            return strncmp(buf, val.val.String, len) >= 0;
+            break;
+          case Operator::LT:
+            return strncmp(buf, val.val.String, len) < 0;
+            break;
+          case Operator::LE:
+            return strncmp(buf, val.val.String, len) <= 0;
+            break;
+          case Operator::EQ:
+            return strncmp(buf, val.val.String, len) == 0;
+            break;
+          case Operator::NE:
+            return strncmp(buf, val.val.String, len) != 0;
+            break;
           default:
             assert(0);
         }
         break;
+      }
     }
-  }
-
-  void deleteRecord(const Table& table, const vector<Condition>& conds) {
-    checkTableName(table);
-    checkConditionValid(table, conds);
-    RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
-    do {
-      if (!rap.isCurrentSlotValid()) continue;
-
-    } while (rap.next());
-  }
-
-  vector<Tuple> selectRecord(const Table& table,
-                             const vector<Condition>& conds) {
-    vector<Tuple> res;
-    checkTableName(table);
-    checkConditionValid(table, conds);
-    RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
-    do {
-      if (!rap.isCurrentSlotValid()) continue;
-
-    } while (rap.next());
-    return res;
   }
 
   unordered_map<std::string, vector<size_t>> table_blocks;
@@ -285,6 +301,9 @@ class RecordManager {
 
   Position insertRecord(const Table& table, const Tuple& tuple) {
     checkTableName(table);
+    if (!table_current.contains(table.table_name))
+      table_current[table.table_name] =
+          RecordAccessProxy(&table_blocks[table.table_name], &table, 0);
     auto& access = table_current[table.table_name];
     while (access.isCurrentSlotValid()) {
       if (!access.next()) {
@@ -302,6 +321,33 @@ class RecordManager {
     do {
       if (!rap.isCurrentSlotValid()) continue;
       res.push_back(rap.extractData());
+    } while (rap.next());
+    return res;
+  }
+
+  void deleteRecord(const Table& table, const vector<Condition>& conds) {
+    checkTableName(table);
+    checkConditionValid(table, conds);
+    RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
+    auto conds_ = convertConditions(table, conds);
+    do {
+      if (!rap.isCurrentSlotValid()) continue;
+      if (checkRecordSatisfyCondition(conds_, rap.getRawData()))
+        rap.deleteRecord();
+    } while (rap.next());
+  }
+
+  vector<Tuple> selectRecord(const Table& table,
+                             const vector<Condition>& conds) {
+    vector<Tuple> res;
+    checkTableName(table);
+    checkConditionValid(table, conds);
+    RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
+    auto conds_ = convertConditions(table, conds);
+    do {
+      if (!rap.isCurrentSlotValid()) continue;
+      if (checkRecordSatisfyCondition(conds_, rap.getRawData()))
+        res.push_back(rap.extractData());
     } while (rap.next());
     return res;
   }

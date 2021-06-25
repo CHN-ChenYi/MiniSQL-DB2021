@@ -190,3 +190,8 @@ struct Condition {
   Operator op;
   SqlValue val;
 };
+
+class syntax_error : public std::runtime_error {
+ public:
+  syntax_error(const char *what) : runtime_error(what) {}
+};
