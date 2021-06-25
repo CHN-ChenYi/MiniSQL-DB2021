@@ -172,7 +172,7 @@ bool InsertKey(const Table &table,
    * @return selected records
    */
     vector<Tuple> SelectRecord(const string &index,
-                             const vector<Condition> &conditions);
+                             const vector<Condition> &conditions) ;
 };
 
 extern IndexManager index_manager;
