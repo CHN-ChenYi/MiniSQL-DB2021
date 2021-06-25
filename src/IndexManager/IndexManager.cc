@@ -3,11 +3,14 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <string>
+#include <map>
 
 #include "BufferManager.hpp"
 #include "CatalogManager.hpp"
 #include "DataStructure.hpp"
 
+using namespace std;
 using std::cerr;
 using std::endl;
 
@@ -63,34 +66,92 @@ bool IndexManager::CreateIndex(const Table &table, const string &index_name,
         return true;
     }
     if(get<2>(table.attributes.at(column)) == SpecialAttribute::None){
-        cerr << "the attribute may not be unique" << endl;
-        return false;
+        cerr << "failed to build index: the attribute may not be unique" << endl;
+        return true;
     }
-
-    //
+    
+    SqlValueType p = get<1>(table.attributes.at(column));
+    //something goes wrong down below
+    //table.indexes.insert({std::pair<string,string>(column,index_name)});
+    getBplus newTree(NEWBLOCK, p);
+    newTree.newNode();
+    index_blocks.insert({column, newTree.block_id_});
 
     return true;
 }
+
+bool IndexManager::PrimaryKeyIndex(const Table &table){
+    auto it = table.attributes.begin();
+    while(it!=table.attributes.end()){
+        auto &c = *it;
+        if(get<2>(c.second)==SpecialAttribute::PrimaryKey) break;
+        ++it;
+    }
+    if(it==table.attributes.end()){
+        cerr << "failed to build an index: the table doesn't have a Primary Key" << endl;
+        return true;
+    }
+    CreateIndex(table, it->first, it->first);
+    return true;
+}
+
 
 bool IndexManager::DropIndex(const Table &table, const string &index_name){
     if(!table.indexes.contains(index_name)){
         cerr << "such a index doesn't exists" << endl;
         return true;
     }
-
-    //
-
+    auto &block_id = index_blocks.at(index_name);
+    getBplus byebye(block_id, 0);
+    byebye.deleteIndex();
+    
     return true;
 }
 
-bool IndexManager::InsertKey(const string &index_name,
-                 tuple<string, SqlValueType, SpecialAttribute> &attributes,
-                 Position &pos){}
+void IndexManager::DropAllIndex(const Table &table){
+    for(const auto &v : table.indexes){
+        auto &attribute_name = v.first;
+        auto &index_name = v.second;
+        DropIndex(table, index_name);        
+    }
+}
 
-bool IndexManager::RemoveKey(const string &index_name,
-                    tuple<string, SqlValueType, SpecialAttribute> &attributes){}
+bool IndexManager::InsertKey(const Table &table,
+                 const Tuple &tuple,
+                 Position &pos){
+    //
+    for(const auto &v : table.indexes){
+        auto &attribute_name = v.first;
+        auto &index_name = v.second;
+        auto &block_id = index_blocks.at(index_name);
+        auto &attribute_index = get<0>(table.attributes.at(attribute_name));
+        auto &attribute_type = get<1>(table.attributes.at(attribute_name));
+        getBplus current(block_id, attribute_type);
+        current.insert(tuple.values[attribute_index], pos);
+    }
+    return true;
+}
+
+bool IndexManager::RemoveKey(const Table &table,
+                    const Tuple &tuple){
+    //
+    for(const auto &v : table.indexes){
+        auto &attribute_name = v.first;
+        auto &index_name = v.second;
+        auto &block_id = index_blocks.at(index_name);
+        auto &attribute_index = get<0>(table.attributes.at(attribute_name));
+        auto &attribute_type = get<1>(table.attributes.at(attribute_name));
+        getBplus current(block_id, attribute_type);
+        current.erase(tuple.values[attribute_index]);
+    }
+    return true;
+}
 
 vector<Tuple> IndexManager::SelectRecord(const string &index,
-                             const vector<Condition> &conditions) {}
+                             const vector<Condition> &conditions) {
+    vector<Tuple> res;
+    //
+    return res;
+}
 
 IndexManager index_manager;

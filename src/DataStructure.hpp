@@ -27,6 +27,7 @@ namespace Config {
 
 const int kMaxStringLength = 256;
 const int kBlockSize = 4 * 1024;
+const int kNodeCapacity = 14;  // 8 + ( 256 + 16 ) * 14 + 16 + 16
 #ifdef _DEBUG
 const int kMaxBlockNum = 10;
 #else
@@ -148,6 +149,8 @@ struct Table {
    * @brief make an empty tuple according to the attributes
    */
   Tuple makeEmptyTuple() const;
+
+  void insertIndex(string attribute, string index_name) const;
 };
 
 struct Block {

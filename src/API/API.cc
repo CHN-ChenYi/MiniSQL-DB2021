@@ -9,6 +9,9 @@ bool CreateTable(
   if (!catalog_manager.CreateTable(table_name, attributes)) return false;
   if (!record_manager.createTable(catalog_manager.TableInfo(table_name)))
     return false;
+  //untested↓
+  //if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
+    return false;
 }
 
 void DropTable(const string &table_name) {}
@@ -16,7 +19,8 @@ void DropTable(const string &table_name) {}
 bool CreateIndex(const string &table_name,
                  const string &index_name,
                  const string &column) {
-  if (!index_manager.CreateIndex(catalog_manager.TableInfo(table_name), index_name, column)) return false;
+  //untested↓
+  //if (!index_manager.CreateIndex(catalog_manager.TableInfo(table_name), index_name, column)) return false;
   return true;
 }
 
@@ -31,7 +35,9 @@ void Select(const string &table_name, const vector<Condition> &conditions) {
 }
 
 void Insert(const string &table_name, const Tuple &tuple) {
-  record_manager.insertRecord(catalog_manager.TableInfo(table_name), tuple);
+  Position pos = record_manager.insertRecord(catalog_manager.TableInfo(table_name), tuple);
+  //untested↓
+  //index_manager.InsertKey(catalog_manager.TableInfo(table_name), tuple, pos);
 }
 
 void Delete(const string &table_name, const vector<Condition> &conditions) {}
