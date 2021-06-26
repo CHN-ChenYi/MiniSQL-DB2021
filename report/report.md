@@ -122,6 +122,25 @@ size_t NextId();
 
 ### Interpreter 模块
 
+#### 对外接口
+
+```c++
+void interpret();
+
+bool interpretFile(const std::filesystem::path &filename);
+
+void setWorkdir(const std::filesystem::path &dir);
+```
+
+其中：
+* `interpret` 从 `stdin` 接受输入，并进行解析和后续执行
+* `interpretFile` 打开由 `filename` 指定的文件，并进行解析和后续执行
+* `setWorkdir` 设置当前 Interpreter 的工作目录，进而和 `interpretFile` 和 `execfile` 良好配合，实现对相对路径的正确解释及嵌套 `execfile` 命令的处理
+
+#### 实现细节
+
+* Interpreter 是手工编写的递归下降无回溯LL(1)语法分析器。对于MiniSQL文法中的每一个非终结符，Interpreter 都使用了一个对应的函数(parse*)进行解析。这些函数相互调用，从而实现对用户输入的解析。由于 MiniSQL 的文法得到了很大简化，因此无需构造 AST，只需记录对应表名、索引名、条件集或元组集即可。若发生 Token 不匹配、字符串长度超限等情况，Interpreter 给出语法错误信息并终止此语句执行。在完成 Statement 层次的非终结符解析后，Interpreter会根据需要，决定是否从 Catalog Manager 请求相应的信息对用户输入的一部分进行检查。检查完成后，则会调用 API 层，执行语句对应的语义动作，并统计时间，按需输出结果。
+
 ### Record Manager 模块
 
 #### 对外接口
