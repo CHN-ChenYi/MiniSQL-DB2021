@@ -6,10 +6,34 @@
 #include <map>
 #include <thread>
 
+#define UseThreadPool
+#ifdef UseThreadPool
+#include "ThreadPool.hpp"
+#endif
+
 class TaskPool {
-  std::map<size_t, std::future<void>> pool_;
+#ifdef UseThreadPool
+  ThreadPool *thread_pool_;
+#endif
+  std::map<size_t, std::future<void>> task_pool_;
 
  public:
+#ifdef UseThreadPool
+  /**
+   * @brief Construct a new Task Pool object
+   *
+   */
+  TaskPool() {
+    thread_pool_ = new ThreadPool(std::thread::hardware_concurrency() - 1);
+  }
+
+  /**
+   * @brief Destroy the Task Pool object
+   *
+   */
+  ~TaskPool() { delete thread_pool_; }
+#endif
+
   /**
    * @brief Check if the task is currently running
    *
@@ -17,11 +41,11 @@ class TaskPool {
    * @return true if the task is currently running
    */
   bool IsBusy(const size_t &task_id) {
-    auto task = pool_.find(task_id);
-    if (task == pool_.end()) return false;
+    auto task = task_pool_.find(task_id);
+    if (task == task_pool_.end()) return false;
     if (task->second.wait_for(std::chrono::milliseconds(1)) ==
         std::future_status::ready) {
-      pool_.erase(task);
+      task_pool_.erase(task);
       return false;
     }
     return true;
@@ -33,10 +57,10 @@ class TaskPool {
    * @param task_id the id of the task
    */
   void Wait(const size_t &task_id) {
-    auto task = pool_.find(task_id);
-    if (task == pool_.end()) return;
+    auto task = task_pool_.find(task_id);
+    if (task == task_pool_.end()) return;
     task->second.wait();
-    pool_.erase(task);
+    task_pool_.erase(task);
   }
 
   /**
@@ -50,7 +74,11 @@ class TaskPool {
     if (IsBusy(task_id)) {
       return false;
     }
-    pool_[task_id] = std::async(std::launch::async, task);
+#ifndef UseThreadPool
+    task_pool_[task_id] = std::async(std::launch::async, task);
+#else
+    task_pool_[task_id] = thread_pool_->push([task](int) { task(); });
+#endif
     return true;
   }
 };
