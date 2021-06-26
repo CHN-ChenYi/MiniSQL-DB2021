@@ -80,6 +80,8 @@
 
 ### Buffer Manager 模块
 
+#### 对外接口
+
 Buffer Manager 提供了基本的 Block 抽象。主要对外接口为以下三个：
 
 ``` c++
@@ -105,6 +107,16 @@ size_t NextId();
   * 第三个版本通过 std::mutex, std::atomic, std::condition_variable 等实现了一个线程池，在 MiniSQL 程序打开时默认新建（机器核数 - 1）个线程用于磁盘写操作。规避了在第二个版本中线程生成与销毁的开销，进一步优化了性能。（在 TaskPool.hpp 中通过宏定义 UseThreadPool 默认打开）
 
 ### Catalog Manager 模块
+
+#### 对外接口
+
+正如**模块设计与简要概述**中所说，Catalog Manager 的主要功能是管理表格及其信息。所以其对外接口为 `CreateTable`, `DropTable`, `CreateIndex`, `DropIndex`, `TableInfo` 等。其作用与名字一致，即在检查语法和语义正确性之后对数据库模式信息进行修改。在此不做赘述。
+
+#### 实现细节
+
+* Catalog Manager 在构造函数中读取了磁盘中存下的数据库模式信息，实现了初始化。在析构函数中将数据库模式信息写回，保证了数据安全性。
+* Catalog Manager 管理的模式信息由于经常读写且长度不一定在一个 block 范围内，所以不由 Buffer Manager 进行管理。它自己直接开设了一个文件实现了信息的永久保存。
+* 为了提高性能，使用了 std::unordered_map 来保存了表名与表信息之间的映射。
 
 ### Index Manager 模块
 
