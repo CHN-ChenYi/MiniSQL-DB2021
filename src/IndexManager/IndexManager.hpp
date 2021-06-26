@@ -64,13 +64,17 @@ struct bplusNode {
      * */
     void insert_in_parent(size_t old_id, size_t new_id, SqlValue k);
 
-    Position *find(SqlValue val);
+    size_t findLeaf(SqlValue val);
+
+    Tuple find(SqlValue val);
 
     /**
      * @brief delete ONE key in the index at one time
      * please set cur_blk_ to the rootNode before erase
      * */
     void erase(SqlValue val);
+
+    void delete_entry(size_t N, SqlValue K);
 
     void deleteIndexRoot();
   };

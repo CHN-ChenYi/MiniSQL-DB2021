@@ -273,7 +273,7 @@ void getBplus::insert_in_parent(size_t old_id, size_t new_id, SqlValue k) {
     }
 }
 
-Position* getBplus::find(SqlValue val) {
+size_t getBplus::findLeaf(SqlValue val) {
     int i = 0;
     while (Node_.type != NodeType::LeafNode) {
     size_t Next_blk;
@@ -284,15 +284,23 @@ Position* getBplus::find(SqlValue val) {
     Next_blk = Node_.pos[i].block_id;
     switchToBlock(Next_blk);
     }
-    i = 0;
+    return block_id_;
+}
+
+Tuple getBplus::find(SqlValue val){
+    size_t leaf = findLeaf(val);
+    switchToBlock(leaf);
+    int i = 0;
     while (i < element_num) {
     if (Node_.elem[i].Compare(Operator::EQ, val)) break;
     i++;
     }
-    if (i == element_num)
-    return nullptr;
+    if (i == element_num){
+        
+    }
     else
-    return &Node_.pos[i];
+    Position p = Node_.pos[i];
+    //unfinished
 }
 
 /**
@@ -300,15 +308,180 @@ Position* getBplus::find(SqlValue val) {
  * please set cur_blk_ to the rootNode before erase
  * */
 void getBplus::erase(SqlValue val) {
-    //
-    Position *D = find(val);
-    if (!D) {
-    cerr << "the value doesn't exist" << endl;
-    return;
-    }
-    size_t targetLeaf = D->block_id;
+    size_t targetLeaf = findLeaf(val);
+    delete_entry(targetLeaf, val);
+}
 
-    return;
+void getBplus::delete_entry(size_t N, SqlValue K){
+    switchToBlock(N);
+    int i = 0;
+    while(i < element_num){
+        if(Node_.elem[i].Compare(Operator::EQ, K)) break;
+        i++;
+    }
+    if(i==element_num) return;
+
+    if(Node_.type == NodeType::LeafNode){
+        Node_.elem.erase(Node_.elem.begin() + i);
+        Node_.pos.erase(Node_.pos.begin() + i);
+    }
+    else{
+        Node_.elem.erase(Node_.elem.begin() + i);
+        Node_.pos.erase(Node_.pos.begin() + i + 1);
+    }
+    element_num--;
+    updateBlock();
+
+    int minElem;
+    switch (Node_.type){
+        case NodeType::LeafNode : minElem = Config::kNodeCapacity / 2; break;
+        default: minElem = (Config::kNodeCapacity + 1) / 2;
+    }
+    size_t blk_id;
+    if(Node_.type == NodeType::Root && element_num==0){
+        blk_id = Node_.pos[0].block_id;
+        memset(cur_blk_->val_, 0, Config::kBlockSize);
+        cur_blk_->dirty_ = true;
+        cur_blk_->pin_ = false;
+        updateBlock();
+
+        switchToBlock(blk_id);
+        root_id = block_id_;
+        if(Node_.type != NodeType::LeafNode) Node_.type = NodeType::Root;
+        updateBlock();
+    }
+    else if((Node_.type==NodeType::LeafNode && element_num<minElem) || 
+            (Node_.type!=NodeType::LeafNode && element_num+1<minElem)){
+        blk_id = block_id_;   //target Node
+        size_t N_ = Node_.parent.block_id;
+        SqlValue K_;
+        int Elem_ = element_num;   //element of target Node
+        switchToBlock(N_);
+        for(i=0;i<=element_num;i++){   //find position of target Node in N_
+            if(Node_.pos[i].block_id == blk_id) break;
+        }
+        if(i==0){
+            N_ = Node_.pos[i+1].block_id;
+            K_ = Node_.elem[i];
+        }
+        else {
+            N_ = Node_.pos[i-1].block_id;
+            K_ = Node_.elem[i-1];
+        }
+        switchToBlock(N_);
+        if(element_num + Elem_ <= Config::kNodeCapacity - 1){ //merge
+            if(i==0){
+                N = N_;
+                N_ = blk_id;
+            }
+            switchToBlock(N);
+            vector<SqlValue> temp_val;
+            vector<Position> temp_pos;
+            temp_val.insert(temp_val.begin(),Node_.elem.begin(),Node_.elem.end());
+            temp_pos.insert(temp_pos.begin(),Node_.pos.begin(),Node_.pos.end());
+            switchToBlock(N_);
+            if(Node_.type!=NodeType::LeafNode){
+                Node_.elem.push_back(K_);
+                Node_.elem.insert(Node_.elem.end(),temp_val.begin(),temp_val.end());
+                Node_.pos.insert(Node_.pos.end(),temp_pos.begin(),temp_pos.end());
+            }
+            else{
+                Node_.pos.erase(Node_.pos.end()-1);
+                Node_.elem.insert(Node_.elem.end(),temp_val.begin(),temp_val.end());
+                Node_.pos.insert(Node_.pos.end(),temp_pos.begin(),temp_pos.end());
+            }
+            element_num = Node_.elem.size();
+            updateBlock();
+            delete_entry(Node_.parent.block_id, K_);
+            switchToBlock(blk_id);
+            memset(cur_blk_->val_, 0, Config::kBlockSize);
+            cur_blk_->dirty_ = true;
+            cur_blk_->pin_ = false;
+            updateBlock();
+        }
+        else{ //rearrange
+            if(i!=0){
+                if(Node_.type!=NodeType::LeafNode){
+                    SqlValue temp_K = Node_.elem[element_num-1];
+                    Position temp_p = Node_.pos[element_num];
+                    Node_.elem.erase(Node_.elem.end()-1);
+                    Node_.pos.erase(Node_.pos.end()-1);
+                    element_num--;
+                    updateBlock();
+                    switchToBlock(N);
+                    Node_.elem.insert(Node_.elem.begin(),K_);
+                    Node_.pos.insert(Node_.pos.begin(),temp_p);
+                    element_num++;
+                    updateBlock();
+                    switchToBlock(Node_.parent.block_id);
+                    for(i=0;i<element_num;i++){
+                        if(Node_.elem[i].Compare(Operator::EQ,K_)) break;
+                    }
+                    Node_.elem[i] = temp_K;
+                    updateBlock();
+                }
+                else{
+                    SqlValue temp_K = Node_.elem[element_num-1];
+                    Position temp_p = Node_.pos[element_num-1];
+                    Node_.elem.erase(Node_.elem.end()-1);
+                    Node_.pos.erase(Node_.pos.end()-2);
+                    element_num--;
+                    updateBlock();
+                    switchToBlock(N);
+                    Node_.elem.insert(Node_.elem.begin(),temp_K);
+                    Node_.pos.insert(Node_.pos.begin(),temp_p);
+                    element_num++;
+                    updateBlock();
+                    switchToBlock(Node_.parent.block_id);
+                    for(i=0;i<element_num;i++){
+                        if(Node_.elem[i].Compare(Operator::EQ,K_)) break;
+                    }
+                    Node_.elem[i] = temp_K;
+                    updateBlock();
+                }
+            }
+            else{
+                if(Node_.type!=NodeType::LeafNode){
+                    SqlValue temp_K = Node_.elem[0];
+                    Position temp_p = Node_.pos[0];
+                    Node_.elem.erase(Node_.elem.begin());
+                    Node_.pos.erase(Node_.pos.begin());
+                    element_num--;
+                    updateBlock();
+                    switchToBlock(N);
+                    Node_.elem.push_back(K_);
+                    Node_.pos.push_back(temp_p);
+                    element_num++;
+                    updateBlock();
+                    switchToBlock(Node_.parent.block_id);
+                    for(i=0;i<element_num;i++){
+                        if(Node_.elem[i].Compare(Operator::EQ,K_)) break;
+                    }
+                    Node_.elem[i] = temp_K;
+                    updateBlock();
+                }
+                else{
+                    SqlValue temp_K = Node_.elem[1];
+                    Position temp_p = Node_.pos[0];
+                    Node_.elem.erase(Node_.elem.begin());
+                    Node_.pos.erase(Node_.pos.begin());
+                    element_num--;
+                    updateBlock();
+                    switchToBlock(N);
+                    Node_.elem.push_back(K_);
+                    Node_.pos.insert(Node_.pos.end()-1,temp_p);
+                    element_num++;
+                    updateBlock();
+                    switchToBlock(Node_.parent.block_id);
+                    for(i=0;i<element_num;i++){
+                        if(Node_.elem[i].Compare(Operator::EQ,K_)) break;
+                    }
+                    Node_.elem[i] = temp_K;
+                    updateBlock();
+                }
+            }
+        }
+    }
 }
 
 void getBplus::deleteIndexRoot() {
