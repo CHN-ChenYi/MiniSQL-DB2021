@@ -175,7 +175,7 @@ drop table student;
 ```c++
 void interpret();
 
-bool interpretFile(const std::filesystem::path &filename);
+tuple<bool, size_t> interpretFile(const std::filesystem::path &filename);
 
 void setWorkdir(const std::filesystem::path &dir);
 ```
@@ -188,6 +188,77 @@ void setWorkdir(const std::filesystem::path &dir);
 #### 实现细节
 
 * Interpreter 是手工编写的递归下降无回溯LL(1)语法分析器。对于MiniSQL文法中的每一个非终结符，Interpreter 都使用了一个对应的函数(parse*)进行解析。这些函数相互调用，从而实现对用户输入的解析。由于 MiniSQL 的文法得到了很大简化，因此无需构造 AST，只需记录对应表名、索引名、条件集或元组集即可。若发生 Token 不匹配、字符串长度超限等情况，Interpreter 给出语法错误信息并终止此语句执行。在完成 Statement 层次的非终结符解析后，Interpreter会根据需要，决定是否从 Catalog Manager 请求相应的信息对用户输入的一部分进行检查。检查完成后，则会调用 API 层，执行语句对应的语义动作，并统计时间，按需输出结果。
+
+#### 模块测试
+
+定义`_INTERPRETER_DEBUG` 宏，通过如下语句测试 Interpreter 模块是否正常工作
+
+```sql
+create table student (sno char(8), sname char(16) unique, sage int, sgender char (1), score float, primary key ( sno ));
+drop table student;
+create index stunameidx on student(sname);
+drop index stunameidx on student;
+insert into student values ('12345678','wy',22,'M',96);
+```
+
+其中test1.sql文件为：
+
+```sql
+```
+
+**测试结果表明Interpreter功能完备**
+
+- 错误提示：
+
+  - SYNTAX ERROR![image-20210627012348856](./img/InterpreterTest0.png)
+
+    ![image-20210627012740598](./img/InterpreterTest8.png)
+
+  - INVALID VALUE
+
+    ![image-20210627013041165](./img/InterpreterTest9.png)
+
+  - INVALID ID
+
+    ![image-20210627013309398](./img/InterpreterTest10.png)
+
+- 创建表语句：
+
+  ![image-20210627005923180](./img/InterpreterTest1.png)
+
+- 删除表语句 ：
+
+  ![image-20210627010327780](./img/InterpreterTest2.png)
+
+- 创建索引语句 ：
+
+  ![image-20210627010601495](./img/InterpreterTest3.png)
+
+- 删除索引语句 ：
+
+  ![image-20210627010712677](./img/InterpreterTest4.png)
+
+- 选择语句 ：
+
+  参见下方execfile测试中test1.sql的结果
+
+- 插入记录语句 （由于插入可能执行很多次，故不显示被影响的行数，防止刷屏）：
+
+  ![image-20210627011202794](./img/InterpreterTest5.png)
+
+- 删除记录语句 ：
+
+  ![s](./img/InterpreterTest6.png)
+
+- 退出 MiniSQL 系统语句 ：
+
+  ![image-20210627012102596](./img/InterpreterTest7.png)
+
+- 执行 SQL 脚本文件语句 ：
+
+  
+
+  
 
 ### Record Manager 模块
 

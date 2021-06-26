@@ -1,5 +1,7 @@
 #include "Interpreter.hpp"
 
+#include <corecrt.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -48,8 +50,15 @@ using std::filesystem::path;
 
 using namespace std::literals;
 
+#define _INTERPRETER_DEBUG
+
 int icasecmp(const char *s1, const char *s2, size_t n) {
   return strncasecmp(s1, s2, n);
+}
+
+void Interpreter::showAffected() {
+  std::cout << ANSI_COLOR_CYAN << affected << ANSI_COLOR_RESET " rows in set / affect"
+            << std::endl;
 }
 
 void Interpreter::interpret() {
@@ -99,7 +108,7 @@ void Interpreter::interpret() {
   }
 }
 
-bool Interpreter::interpretFile(const path &filename) {
+tuple<bool, size_t> Interpreter::interpretFile(const path &filename) {
   extern volatile std::sig_atomic_t interrupt;
   auto t1 = steady_clock::now();
   ifstream is(cur_dir / filename, std::ios::binary);
@@ -107,7 +116,7 @@ bool Interpreter::interpretFile(const path &filename) {
   size_t sentence_cnt = 0;
   if (!is) {
     cerr << "can't open file " << cur_dir / filename << endl;
-    return false;
+    return {false, 0};
   }
   buf << is.rdbuf();
   input = buf.str();
@@ -150,7 +159,7 @@ bool Interpreter::interpretFile(const path &filename) {
   cout << "run " ANSI_COLOR_GREEN << sentence_cnt
        << ANSI_COLOR_RESET " sentences in " ANSI_COLOR_MAGENTA << diff.count()
        << "s" ANSI_COLOR_RESET << endl;
-  return true;
+  return {true, affected};
 }
 
 void Interpreter::checkAndFixCondition() {
@@ -685,13 +694,13 @@ void Interpreter::parseInsertStat() {
     cout << "  " << v << endl;
   }
 #endif
-  
+
   if (!not_changed) {
     last_table = &catalog_manager.TableInfo(string(table_name.sv));
     tp = last_table->makeEmptyTuple();
   }
   if (tp.values.size() != cur_values.size()) {
-    cerr << "the number of values doesn't match";
+    cerr << "the number of values doesn't match" << endl;
     throw syntax_error("the number of value wrong");
   }
   for (size_t i = 0; i < tp.values.size(); ++i) {
@@ -746,7 +755,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
       if (val.type < tok.sv.length() +
                          static_cast<SqlValueType>(SqlValueTypeBase::String)) {
         cerr << "the types of the table and values don't match: requires a "
-                "string"
+                "number"
              << endl;
         throw invalid_value("type error");
       }

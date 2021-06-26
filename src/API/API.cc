@@ -3,6 +3,7 @@
 #include "CatalogManager.hpp"
 #include "DataStructure.hpp"
 #include "IndexManager.hpp"
+#include "Interpreter.hpp"
 #include "RecordManager.hpp"
 
 bool CreateTable(
@@ -56,8 +57,6 @@ void Select(const string &table_name, const vector<Condition> &conditions,
       std::cout << static_cast<std::string>(v) << std::endl;
     }
   }
-  std::cout << ANSI_COLOR_CYAN << res.size() << ANSI_COLOR_RESET " rows in set"
-            << std::endl;
 }
 
 void Insert(const string &table_name, const Tuple &tuple) {
@@ -80,6 +79,4 @@ void Delete(const string &table_name, const vector<Condition> &conditions) {
   else
     n = record_manager.deleteRecord(catalog_manager.TableInfo(table_name),
                                     conditions);
-  std::cout << ANSI_COLOR_CYAN << n << ANSI_COLOR_RESET " rows affect"
-            << std::endl;
 }
