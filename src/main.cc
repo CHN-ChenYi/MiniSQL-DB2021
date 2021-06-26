@@ -10,7 +10,7 @@
 volatile std::sig_atomic_t interrupt = 0;
 
 int main(int argc, char **argv) {
-  std::signal(SIGINT, [](int) -> void {
+  std::signal(SIGINT, [](int) {
     std::cout << ANSI_COLOR_RED
         "Please use `quit;` instead of `CTRL-C` the next time." ANSI_COLOR_RESET
               << std::endl;

@@ -33,7 +33,10 @@ void BufferManager::WriteToFile(const size_t &block_id, Block *block) {
   std::cerr << "Writing back block " << block_id << std::endl;
 #endif
 #ifdef ParallelWrite
-  if (task_pool_.Exec(block_id, [block_id, block]() {
+  if (!task_pool_.Exec(block_id, [block_id, block]() {
+#endif
+#ifdef BufferDebug
+        std::cerr << "Parallel writing back block " << block_id << std::endl;
 #endif
         std::ofstream os(Block::GetBlockFilename(block_id), std::ios::binary);
         block->write(os);

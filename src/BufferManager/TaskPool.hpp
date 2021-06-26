@@ -6,7 +6,7 @@
 #include <map>
 #include <thread>
 
-class TaskPool {  // TODO: test it
+class TaskPool {
   std::map<size_t, std::future<void>> pool_;
 
  public:
@@ -18,7 +18,7 @@ class TaskPool {  // TODO: test it
    */
   bool IsBusy(const size_t &task_id) {
     auto task = pool_.find(task_id);
-    if (task == pool_.end()) return true;
+    if (task == pool_.end()) return false;
     if (task->second.wait_for(std::chrono::milliseconds(1)) ==
         std::future_status::ready) {
       pool_.erase(task);
