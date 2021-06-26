@@ -595,8 +595,7 @@ void Interpreter::parseSelectStat() {
   parseId();
   table_name = cur_tok;
   if (peek("where"sv)) parseWhereClause();
-  if (consume("#"sv))
-    redirect = true;
+  if (consume("#"sv)) redirect = true;
   parseStatEnd();
 #ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: select";
@@ -657,9 +656,20 @@ void Interpreter::parseDeleteStat() {
 }
 
 void Interpreter::parseInsertStat() {
+  bool not_changed;
+  static Tuple tp;
+  static Token last_insert_table_name;
+  const static Table *last_table;
+  static vector<tuple<const char *, size_t, size_t>> need_unique;
   expect("insert"sv);
   expect("into"sv);
   parseId();
+  if (cur_tok.sv == last_insert_table_name.sv)
+    not_changed = true;
+  else {
+    not_changed = false;
+    last_insert_table_name = cur_tok;
+  }
   table_name = cur_tok;
   expect("values"sv);
   expect("("sv);
@@ -675,15 +685,34 @@ void Interpreter::parseInsertStat() {
     cout << "  " << v << endl;
   }
 #endif
-  Tuple t = catalog_manager.TableInfo(string(table_name.sv)).makeEmptyTuple();
-  if (t.values.size() != cur_values.size()) {
+  
+  if (!not_changed) {
+    last_table = &catalog_manager.TableInfo(string(table_name.sv));
+    tp = last_table->makeEmptyTuple();
+  }
+  if (tp.values.size() != cur_values.size()) {
     cerr << "the number of values doesn't match";
     throw syntax_error("the number of value wrong");
   }
-  for (size_t i = 0; i < t.values.size(); ++i) {
-    tokenToSqlValue(t.values[i], cur_values[i]);
+  for (size_t i = 0; i < tp.values.size(); ++i) {
+    tokenToSqlValue(tp.values[i], cur_values[i]);
   }
-  Insert(string(table_name.sv), t);
+  if (!not_changed) {
+    need_unique.clear();
+    for (auto &[_1, value] : last_table->attributes) {
+      auto &[idx, type, special, offset] = value;
+      if (special >= SpecialAttribute::PrimaryKey) {
+        size_t len = type;
+        if (type >= static_cast<SqlValueType>(SqlValueTypeBase::String))
+          len -= static_cast<SqlValueType>(SqlValueTypeBase::String);
+        else
+          len = sizeof(int);
+        need_unique.push_back(
+            {reinterpret_cast<const char *>(&tp.values[idx].val), len, offset});
+      }
+    }
+  }
+  InsertFast(*last_table, tp, need_unique);
 }
 
 void Interpreter::parseWhereClause() {

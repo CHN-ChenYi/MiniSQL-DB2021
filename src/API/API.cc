@@ -68,6 +68,11 @@ void Insert(const string &table_name, const Tuple &tuple) {
   // pos);
 }
 
+void InsertFast(const Table &table, const Tuple &tp,
+                const vector<tuple<const char *, size_t, size_t>> &unique) {
+  record_manager.insertRecordUnique(table, tp, unique);
+}
+
 void Delete(const string &table_name, const vector<Condition> &conditions) {
   size_t n;
   if (conditions.empty())

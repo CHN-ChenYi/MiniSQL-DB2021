@@ -63,6 +63,9 @@ void Select(const string &table_name, const vector<Condition> &conditions,
  */
 void Insert(const string &table_name, const Tuple &tuple);
 
+void InsertFast(const Table &table, const Tuple &tp,
+                const vector<tuple<const char *, size_t, size_t>> &unique);
+
 /**
  * @brief Delete specified records from a table
  *
