@@ -521,6 +521,8 @@ void Interpreter::parseDropTable() {
 #ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: drop a table named `" << table_name.sv << "`" << endl;
 #endif
+
+  DropTable(string(table_name.sv));
 }
 
 void Interpreter::parseDropIndex() {

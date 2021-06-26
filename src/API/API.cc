@@ -33,7 +33,7 @@ bool CreateIndex(const string &table_name, const string &index_name,
   return true;
 }
 
-bool DropIndex(const string &index_name) {
+bool DropIndex(const string &table_name, const string &index_name) {
   if (!catalog_manager.DropIndex(index_name)) return false;
 }
 
