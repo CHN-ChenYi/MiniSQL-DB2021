@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -152,10 +153,59 @@ bool Interpreter::interpretFile(const path &filename) {
   return true;
 }
 
+void Interpreter::checkAndFixCondition() {
+  auto name = string(table_name.sv);
+  auto &table = catalog_manager.TableInfo(name);
+  for (auto &cond : cur_conditions) {
+    if (!table.attributes.contains(cond.attribute)) {
+      std::cerr << "no such an attribute `" ANSI_COLOR_RED << cond.attribute
+                << ANSI_COLOR_RESET " `referenced in condition" << std::endl;
+      throw invalid_ident("invalid attribute name");
+    }
+    auto &[_1, type, _2, _3] = table.attributes.find(cond.attribute)->second;
+    switch (type) {
+      case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
+        if (cond.val.type >=
+            static_cast<SqlValueType>(SqlValueTypeBase::String)) {
+          throw syntax_error("incompatible condition");
+        }
+        if (cond.val.type ==
+            static_cast<SqlValueType>(SqlValueTypeBase::Float)) {
+          cond.val.type = static_cast<SqlValueType>(type);
+          float tmp = cond.val.val.Float;
+          cond.val.val.Integer = tmp;
+        }
+        break;
+      case static_cast<SqlValueType>(SqlValueTypeBase::Float):
+        if (cond.val.type >=
+            static_cast<SqlValueType>(SqlValueTypeBase::String)) {
+          throw syntax_error("incompatible condition");
+        }
+        if (cond.val.type ==
+            static_cast<SqlValueType>(SqlValueTypeBase::Integer)) {
+          cond.val.type = static_cast<SqlValueType>(type);
+          int tmp = cond.val.val.Integer;
+          cond.val.val.Float = tmp;
+        }
+        break;
+      default:
+        if (cond.val.type <
+            static_cast<SqlValueType>(SqlValueTypeBase::String)) {
+          throw syntax_error("incompatible condition");
+        }
+        if (cond.val.type >= static_cast<SqlValueType>(type)) {
+          cerr << "warning: string is too long" << endl;
+        }
+        cond.val.type = static_cast<SqlValueType>(type);
+        break;
+    }
+  }
+}
+
 void Interpreter::expectEnd() {
   skipSpace();
   if (iter != input.end()) {
-    cerr << "WARNING: extra token `";
+    cerr << "warning: extra token `";
     outputUntilNextSpace();
     cerr << "`" << endl;
   }
@@ -376,7 +426,8 @@ void Interpreter::parseStringLiteral() {
   }
   cur_tok = Token{
       .kind = TokenKind::StrLit, .sv = string_view(begin, end), .f = 0, .i = 0};
-  if (cur_tok.sv.length() == 0 || cur_tok.sv.length() >= 256) {
+  if (cur_tok.sv.length() == 0 ||
+      cur_tok.sv.length() >= Config::kMaxStringLength) {
     cerr << "expect valid string literal of which length is [1, 256), and we "
             "got " ANSI_COLOR_RED
          << cur_tok.sv.length() << ANSI_COLOR_RESET << endl;
@@ -562,6 +613,7 @@ void Interpreter::parseSelectStat() {
   }
 #endif
 
+  checkAndFixCondition();
   Select(string(table_name.sv), cur_conditions);
 }
 
@@ -595,7 +647,7 @@ void Interpreter::parseDeleteStat() {
     }
   }
 #endif
-
+  checkAndFixCondition();
   Delete(string(table_name.sv), cur_conditions);
 }
 
@@ -689,6 +741,9 @@ SqlValue Interpreter::tokenToSqlValue(const Token &tok) {
       val.type =
           static_cast<SqlValueType>(SqlValueTypeBase::String) + tok.sv.length();
       memcpy(val.val.String, tok.sv.data(), tok.sv.size());
+      if (tok.sv.size() < Config::kMaxStringLength)
+        memset(val.val.String + tok.sv.size(), 0,
+               Config::kMaxStringLength - tok.sv.size());
       break;
     default:
       assert(0);

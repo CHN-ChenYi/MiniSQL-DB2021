@@ -72,6 +72,7 @@ class Interpreter {
   void tokenToSqlValue(SqlValue &val, const Token &tok);
   SqlValue tokenToSqlValue(const Token &tok);
   Operator tokenToRelOp(const Token &tok);
+  void checkAndFixCondition();
   void expectEnd();
   void outputUntilNextSpace();
   void skipSpace();

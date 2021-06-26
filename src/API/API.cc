@@ -1,6 +1,7 @@
 #include "API.hpp"
 
 #include "CatalogManager.hpp"
+#include "DataStructure.hpp"
 #include "IndexManager.hpp"
 #include "RecordManager.hpp"
 
