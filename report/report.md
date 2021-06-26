@@ -106,6 +106,30 @@ size_t NextId();
   * 第二个版本通过 c++ 的 std::future 以及 std::async 实现了异步非阻塞的文件写操作，从而实现了数据库运算与 IO 并行，一定程度上优化了性能。（在 CMake 中通过 ParallelWrite 选项默认打开）
   * 第三个版本通过 std::mutex, std::atomic, std::condition_variable 等实现了一个线程池，在 MiniSQL 程序打开时默认新建（机器核数 - 1）个线程用于磁盘写操作。规避了在第二个版本中线程生成与销毁的开销，进一步优化了性能。（在 TaskPool.hpp 中通过宏定义 UseThreadPool 默认打开）
 
+#### 模块测试
+
+```c++
+#include "BufferManager.hpp"
+
+void BufferManagerTest() {
+  auto a = new Block;
+  memset(a->val_, 0x3f, sizeof(a->val_));
+  const auto a_id = buffer_manager.Create(a);
+  a->pin_ = true;
+  a->dirty_ = true;
+  for (int i = 0; i < Config::kMaxBlockNum; i++) {
+    auto b = new Block;
+    buffer_manager.Create(b);
+  }
+  a->pin_ = false;
+  auto b = new Block;
+  buffer_manager.Create(b);
+  auto c = buffer_manager.Read(a_id);
+}
+
+```
+通过上述代码测试基本的 read/write, dirty/pin 的功能，为了方便查看，使用 gdb 以及 hexdump 观察结果而不是输出到 console 里面。测试是通过修改 Config 明明空间下的参数调整 buffer 的大小测试不同情况。并行输出部分的性能测试不在此处进行，而是在整个程序对接完毕之后进行。
+
 ### Catalog Manager 模块
 
 #### 对外接口
@@ -117,6 +141,24 @@ size_t NextId();
 * Catalog Manager 在构造函数中读取了磁盘中存下的数据库模式信息，实现了初始化。在析构函数中将数据库模式信息写回，保证了数据安全性。
 * Catalog Manager 管理的模式信息由于经常读写且长度不一定在一个 block 范围内，所以不由 Buffer Manager 进行管理。它自己直接开设了一个文件实现了信息的永久保存。
 * 为了提高性能，使用了 std::unordered_map 来保存了表名与表信息之间的映射。
+
+#### 模块测试
+
+```mysql
+create table student (
+        sno char(8),
+        sname char(16) unique,
+        sage int,
+        sgender char (1),
+        score float,
+        primary key ( sno )
+);
+create index stunameidx on student ( sname );
+drop index stunameidx on student;
+drop table student;
+
+```
+通过上述代码测试基本的 create/drop table/index 的功能，为了方便查看，使用 gdb 以及 hexdump 观察结果而不是输出到 console 里面。
 
 ### Index Manager 模块
 

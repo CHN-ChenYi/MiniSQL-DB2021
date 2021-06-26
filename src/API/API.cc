@@ -34,7 +34,7 @@ bool CreateIndex(const string &table_name, const string &index_name,
 }
 
 bool DropIndex(const string &table_name, const string &index_name) {
-  if (!catalog_manager.DropIndex(index_name)) return false;
+  if (!catalog_manager.DropIndex(table_name, index_name)) return false;
 }
 
 void Select(const string &table_name, const vector<Condition> &conditions,

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <corecrt.h>
 #include <cassert>
 #include <climits>
 #include <cstdint>

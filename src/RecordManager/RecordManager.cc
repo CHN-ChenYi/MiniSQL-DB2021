@@ -1,7 +1,5 @@
 #include "RecordManager.hpp"
 
-#include <corecrt.h>
-
 #include <fstream>
 #include <iostream>
 #include <ostream>

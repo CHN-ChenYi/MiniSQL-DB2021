@@ -48,10 +48,11 @@ class CatalogManager {
   /**
    * @brief Drop an index
    *
+   * @param table_name the name of the table
    * @param index_name the name of the index
    * @return true if successful
    */
-  bool DropIndex(const string &index_name);
+  bool DropIndex(const string &table_name, const string &index_name);
 
   /**
    * @brief Fetch a table's catalog
