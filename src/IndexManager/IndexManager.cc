@@ -75,7 +75,9 @@ bool IndexManager::CreateIndex(const Table &table, const string &index_name,
     //table.indexes.insert({std::pair<string,string>(column,index_name)});
     getBplus newTree(NEWBLOCK, p);
     newTree.newNode();
+    newTree.Node_.parent.block_id = ROOT;
     index_blocks.insert({column, newTree.block_id_});
+    //not finished yet
 
     return true;
 }
