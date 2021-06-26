@@ -166,7 +166,49 @@ drop table student;
 
 ![](./img/CatalogManagerTest2.png)
 
+
+
 ### Index Manager 模块
+
+#### 对外接口
+
+​		Index Manager 负责针对数据进行 B+ 树索引的的实现。需要完成 B+ 树的创建和删除、等值查找、插入健值，删除健值等操作，因而其对外接口主要有：
+
+```c++
+bool CreateIndex(const Table &table, const string &index_name,
+                   const string &column);
+
+bool PrimaryKeyIndex(const Table &table);
+
+bool DropIndex(const string &index_name);
+
+void DropAllIndex(const Table &table);
+
+bool InsertKey(const Table &table, const Tuple &tuple, Position &pos);
+
+bool RemoveKey(const Table &table, const Tuple &tuple);
+
+vector<Tuple> SelectRecord(const string &index,
+                             const vector<Condition> &conditions);
+```
+
+其中：
+
+* `CreateIndex`  通过输入table、索引名称以及索引属性，实现 B+ 树索引的建立；
+* `PrimaryKeyIndex`  自动针对当前 table 内的 primary key 建立索引；
+* `DropIndex`  删除该索引名称所对应的索引；
+* `DropAllIndex`  删除一个 table 内的所有索引；
+* `InsertKey`  将新插入的记录的各项属性值插入其所对应的索引内；
+* `RemoveKey`  将新删除的记录的各项属性值从其所对应的索引内删除；
+* `SelectRecord`  根据传入的 conditions 在索引内查找目标记录。
+
+#### 实现细节
+
+* Index Manager 在构造函数中读取自身存下的index信息文件，完成初始化过程；在析构函数中将完成所有操作后产生的新的index信息重新写入文件，确保数据完整一致。
+* Index Manager 在一个缓冲区内保存一个结点，在进行针对结点的各项操作后，将结点的所有重要信息保存在对应缓冲区内。
+* Index Manager 内封装了 getBplus 模块进行 B+ 树的各类操作，该模块每次锁定一个 B+ 树内的一个结点（每个节点都和一个缓冲区的块相对应），进行结点数据读取、根结点的生成、结点内数据遍历、结点内数据插入、结点内数据删除、结点分裂、结点合并、结点数据保存等等操作，并可以通过结点内保存的缓冲区模块的地址值进行结点的跳转，实现整个 B+ 树的各类操作；在跳转时，模块会自动对新旧缓冲区进行 pin 值标记，并在出现数据更新时进行 dirty 值标记以确保 buffer manager 对其进行保存。
+
+
 
 ### Interpreter 模块
 
@@ -318,3 +360,16 @@ RecordAccessProxy getIterator(const Table &table);
 至于 Buffer Manager，我一开始只是写了一个裸的 Buffer Manager，但我后来意识到这里性能损失有点太大了。仔细考虑一下，发现虽然是个单用户模式的数据库系统，但这不意味着系统不能并行啊。于是我决定对写操作进行并行操作，不对读操作并行的原因是我作为 buffer manager 不太能提前知道下一个要读哪个块，虽然可以构造一个 prefetch 的 api，但这会大大增加其他模块的编写难度。于是我就去研究了 c++ 的 std::future 和 std::async，发现封装得非常好用，很快就写完了，但测试时发现性能提升不大。可能原因一是测试数据的 IO 吞吐量不大，二是生成线程与销毁线程的开销比较大，虽然第一点我无法解决，但第二点可以啊。于是我就写了一个线程池，通过互斥锁和 condition_variable 实现了一个任务队列，这样就规避了线程生成与销毁的时间了。当然，后续还有进一步优化的空间，比如一个 block 还在任务队列里面的时候别的模块就提交了读请求，这个时候其实可以直接将其从任务队列中移除，而不是阻塞式等待它写到文件系统再读出来，不过这个逻辑因为时间问题我还没有实现。
 
 总之，在这个项目中学到了许多。
+
+
+
+### 林伟燊
+
+在这个项目中，我主要负责 Index Manager 模块的编写。而在这过程中的难点便是各个模块之间接口的调用以及 B+ 树部分的实现。
+
+在项目的一开始，我只知道整个 MiniSQL 的总体模块框架，由于自身代码能力有限且工程经验短缺，在一开始着手编写模块的时候十分迷茫，不知道如何下手。最终，在其他两位同学的帮助下终于有了比较清晰的概念和一个大体的实现方案。在这个过程中学习到了许多之前没有接触过的结构、编程方法和各类工具，学到许多。
+
+而在项目实现的过程中，除了自身模块的编写，还需要了解其他模块的各种接口的调用，提出自身的接口需求，编写恰当的接口以供外部调用。在这个过程中，一方面也让我学习到其他模块可以通过什么样的方式来实现，学习到更加高效的组织方式；另一方面也促使我进一步去熟悉整个数据库系统的架构，了解了数据库系统代码的底层实现。不过在编写的过程中，模块内部的实现方式还比较笨拙原始，没有考虑太多性能方面的问题，使得系统在索引建立上的操作要耗费相当长的时间，在这一点上我还需要进一步学习。
+
+
+

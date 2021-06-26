@@ -397,6 +397,7 @@ bool IndexManager::CreateIndex(const Table &table, const string &index_name,
         root_id = index_blocks[column];
         if(newTree.block_id_ != root_id) newTree.switchToBlock(root_id);
     } while(rap.next());
+    newTree.releaseBlock();
 
     return true;
 }
@@ -422,6 +423,7 @@ bool IndexManager::DropIndex(const string &index_name){
     getBplus byebye(block_id, 0, index_name);
     byebye.deleteIndexRoot();
     index_manager.index_blocks.erase(index_name);
+    byebye.releaseBlock();
     
     return true;
 }
@@ -446,6 +448,7 @@ bool IndexManager::InsertKey(const Table &table,
         auto &attribute_type = get<1>(table.attributes.at(attribute_name));
         getBplus current(block_id, attribute_type, index_name);
         current.insert(tuple.values[attribute_index], pos);
+        current.releaseBlock();
     }
     return true;
 }
@@ -461,6 +464,7 @@ bool IndexManager::RemoveKey(const Table &table,
         auto &attribute_type = get<1>(table.attributes.at(attribute_name));
         getBplus current(block_id, attribute_type, index_name);
         current.erase(tuple.values[attribute_index]);
+        current.releaseBlock();
     }
     return true;
 }
