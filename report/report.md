@@ -78,6 +78,8 @@
 
 ### API 模块
 
+按顺序调用各个模块调用接口即可。
+
 ### Buffer Manager 模块
 
 #### 对外接口
@@ -225,7 +227,7 @@ RecordAccessProxy getIterator(const Table &table);
 * Record Manager 在构造函数中读取了磁盘中存下的表占用块信息，实现初始化。在析构函数中将表占用块信息写回，保证了数据安全性。由于表-块对应关系的数据频繁访问且可能跨 block，因此单独存储于文件中。
 * Record Manager 实现了单块无序多记录存储。Record Manager 借助 RecordAccessProxy 所提供的接口，可以遍历块上的所有可能的数据存储槽位，并调用接口来判断此处是否存有有效数据。在条件查询/删除的情境下，在判断有效性后，Record Manager还会进一步判断该记录是否满足条件。
 * RecordAccessProxy封装了低级块操作。RecordAccessProxy 可以根据 Catalog Manager 提供的记录长度信息，递增数据指针指向下一条记录。若修改过当前块，则对 block 置 dirty_ 位以通知 Buffer Manager 择机回写该块。 当指针即将指出当前 block 时，RecordAccessProxy 会查找下一有效 block，并且修改 block 指针、设置新块和旧块的 pin 状态。若已到达最后一块的结尾时，则会返回失败状态。可以通过 RAP 的接口来调用 Buffer Manager 来分配一个新的空闲块，以供插入。此外，RAP还提供了元组提取、块位置提取接口以供其他组件使用
-  
+
 ## 程序展示
 
 ## 总结
