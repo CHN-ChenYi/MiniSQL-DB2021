@@ -17,6 +17,9 @@ int main(int argc, char **argv) {
     interrupt = 1;
   });
 
+  if (!std::filesystem::exists(CommonPathPrefix))
+    std::filesystem::create_directory(CommonPathPrefix);
+
   std::ios_base::sync_with_stdio(false);
   try {
     if (argc == 1) {

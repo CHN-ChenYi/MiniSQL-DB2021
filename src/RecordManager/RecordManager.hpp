@@ -47,7 +47,6 @@ struct RecordAccessProxy {
 };
 
 class RecordManager {
-  inline static const string kRecordFileName = "Record.data";
 
   unordered_map<std::string, vector<size_t>> table_blocks;
   unordered_map<std::string, RecordAccessProxy> table_current;

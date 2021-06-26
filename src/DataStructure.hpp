@@ -7,6 +7,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include "DataStructure.hpp"
 
 using std::ifstream;
 using std::map;
@@ -25,6 +26,10 @@ namespace Config {
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
+#define CommonPathPrefix ".MiniSQL/"
+const string kRecordFileName = CommonPathPrefix "Record.data";
+const string kIndexFileName = CommonPathPrefix "Index.data";
+const string kCatalogFileName = CommonPathPrefix "Catalog.data";
 const int kMaxStringLength = 256;
 const int kBlockSize = 8 * 1024;
 const int kNodeCapacity = 15;  // 8 + ( 256 + 16 ) * ( 15 - 1 ) + 16 + 16
@@ -165,7 +170,7 @@ struct Block {
    * @return the filename
    */
   static string GetBlockFilename(size_t block_id) {
-    return std::to_string(block_id) + ".block";
+    return CommonPathPrefix + std::to_string(block_id) + ".block";
   };
   /**
    * @brief read raw data from ifstream

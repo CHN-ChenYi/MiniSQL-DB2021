@@ -5,7 +5,7 @@
 #include <iostream>
 
 CatalogManager::CatalogManager() {
-  std::ifstream os(kCatalogFileName, std::ios::binary);
+  std::ifstream os(Config::kCatalogFileName, std::ios::binary);
   if (!os) {
     std::cerr << "Couldn't find the catalog file, assuming it is the first "
                  "time of running MiniSQL."
@@ -22,7 +22,7 @@ CatalogManager::CatalogManager() {
 }
 
 CatalogManager::~CatalogManager() {
-  std::ofstream os(kCatalogFileName, std::ios::binary);
+  std::ofstream os(Config::kCatalogFileName, std::ios::binary);
   const auto size = tables_.size();
   os.write(reinterpret_cast<const char *>(&size), sizeof(size));
   for (const auto &table : tables_) table.second.write(os);

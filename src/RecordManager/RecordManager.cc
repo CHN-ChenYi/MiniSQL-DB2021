@@ -145,7 +145,7 @@ void RecordAccessProxy::modifyData(const Tuple &tuple) {
 }
 
 RecordManager::RecordManager() {
-  ifstream is(kRecordFileName, std::ios::binary);
+  ifstream is(Config::kRecordFileName, std::ios::binary);
   if (!is) {
     cerr << "Couldn't find the record file, assuming it is the first "
             "time of running MiniSQL."
@@ -176,7 +176,7 @@ RecordManager::RecordManager() {
 }
 
 RecordManager::~RecordManager() {
-  ofstream os(kRecordFileName, std::ios::binary);
+  ofstream os(Config::kRecordFileName, std::ios::binary);
 
   size_t table_count = table_blocks.size();
   os.write(reinterpret_cast<char *>(&table_count), sizeof(table_count));

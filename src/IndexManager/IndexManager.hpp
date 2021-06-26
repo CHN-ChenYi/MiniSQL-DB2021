@@ -25,7 +25,6 @@ struct bplusNode{
 };
 
 class IndexManager {
-    inline static const string kIndexFileName = "Index.data";
     unordered_map<std::string, size_t> index_blocks;
 
     struct getBplus {

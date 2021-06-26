@@ -15,7 +15,7 @@ using std::cerr;
 using std::endl;
 
 IndexManager::IndexManager(){
-    std::ifstream is(kIndexFileName, std::ios::binary);
+    std::ifstream is(Config::kIndexFileName, std::ios::binary);
     if (!is) {
     std::cerr << "Couldn't find the Index file, assuming it is the first "
                     "time of running MiniSQL."
@@ -41,7 +41,7 @@ IndexManager::IndexManager(){
 }
 
 IndexManager::~IndexManager(){
-    std::ofstream os(kIndexFileName, std::ios::binary);
+    std::ofstream os(Config::kIndexFileName, std::ios::binary);
 
     size_t index_count = index_blocks.size();
     os.write(reinterpret_cast<char *>(&index_count), sizeof(index_count));
