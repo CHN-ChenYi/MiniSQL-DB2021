@@ -26,7 +26,7 @@ namespace Config {
 #define ANSI_COLOR_RESET "\x1b[0m"
 
 const int kMaxStringLength = 256;
-const int kBlockSize = 4 * 1024;
+const int kBlockSize = 8 * 1024;
 const int kNodeCapacity = 14;  // 8 + ( 256 + 16 ) * 14 + 16 + 16
 #ifdef _DEBUG
 const int kMaxBlockNum = 10;

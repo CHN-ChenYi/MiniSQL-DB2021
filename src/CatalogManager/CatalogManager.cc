@@ -31,7 +31,7 @@ CatalogManager::~CatalogManager() {
 bool CatalogManager::CreateTable(
     const string &table_name,
     const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes) {
-  if (tables_.contains(table_name)) return true;
+  if (tables_.contains(table_name)) return false;
   size_t index = 0, offset = 0;
   Table table;
   table.table_name = table_name;
@@ -64,6 +64,10 @@ const Table &CatalogManager::TableInfo(const string &table_name) {
 }
 
 void CatalogManager::DropTable(const string &table_name) {
+  if (!tables_.contains(table_name)) {
+    std::cerr << "such a table doesn't exist" << std::endl;
+    throw syntax_error("table not found");
+  }
   tables_.erase(table_name);
 }
 

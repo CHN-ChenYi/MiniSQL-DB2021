@@ -23,7 +23,7 @@ bool CreateTable(
  *
  * @param table_name the name of the table
  */
-void DropTable(const string &table_name);
+bool DropTable(const string &table_name);
 
 /**
  * @brief Create an index on a table

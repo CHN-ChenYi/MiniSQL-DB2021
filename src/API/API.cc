@@ -15,7 +15,14 @@ bool CreateTable(
   return false;
 }
 
-void DropTable(const string &table_name) {}
+bool DropTable(const string &table_name) {
+  if (!record_manager.dropTable(catalog_manager.TableInfo(table_name)))
+    return false;
+  catalog_manager.DropTable(table_name);
+  return true;
+}
+
+
 
 bool CreateIndex(const string &table_name, const string &index_name,
                  const string &column) {
@@ -30,10 +37,11 @@ void DropIndex(const string &index_name) {}
 void Select(const string &table_name, const vector<Condition> &conditions) {
   vector<Tuple> res;
   if (conditions.empty())
-    res = record_manager.selectAllRecord(catalog_manager.TableInfo(table_name));
+    res =
+        record_manager.selectAllRecords(catalog_manager.TableInfo(table_name));
   else
     res = record_manager.selectRecord(catalog_manager.TableInfo(table_name),
-                                conditions);
+                                      conditions);
   for (auto &v : res) {
     std::cout << static_cast<std::string>(v) << std::endl;
   }
@@ -48,6 +56,9 @@ void Insert(const string &table_name, const Tuple &tuple) {
 }
 
 void Delete(const string &table_name, const vector<Condition> &conditions) {
-  record_manager.deleteRecord(catalog_manager.TableInfo(table_name),
-                              conditions);
+  if (conditions.empty())
+    record_manager.deleteAllRecords(catalog_manager.TableInfo(table_name));
+  else
+    record_manager.deleteRecord(catalog_manager.TableInfo(table_name),
+                                conditions);
 }

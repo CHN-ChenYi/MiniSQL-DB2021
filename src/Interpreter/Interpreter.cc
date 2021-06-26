@@ -65,6 +65,9 @@ void Interpreter::interpret() {
       cout << endl;
       break;
     }
+
+    auto t1 = steady_clock::now();
+
     iter = input.begin();
     bool need_quit = false;
     try {
@@ -76,6 +79,11 @@ void Interpreter::interpret() {
       cout << endl;
       break;
     }
+
+    auto t2 = steady_clock::now();
+    std::chrono::duration<double> diff = t2 - t1;
+    cout << "run command above in " ANSI_COLOR_MAGENTA << diff.count()
+         << "s" ANSI_COLOR_RESET << endl;
   }
 }
 
