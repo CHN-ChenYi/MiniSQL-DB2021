@@ -124,6 +124,47 @@ size_t NextId();
 
 ### Record Manager 模块
 
+#### 对外接口
+
+Record Manager 提供了在 Block 抽象之上的记录操作。主要的对外接口包括有：
+
+```c++
+bool createTable(const Table& table);
+
+bool dropTable(const Table& table);
+
+Position insertRecord(const Table& table, const Tuple& tuple);
+
+vector<Tuple> selectAllRecords(const Table& table);
+
+vector<Tuple> selectRecord(const Table& table,
+                            const vector<Condition>& conds);
+
+size_t deleteRecord(const Table& table, const vector<Condition>& conds);
+
+size_t deleteAllRecords(const Table& table);
+
+RecordAccessProxy getIterator(const Table &table);
+```
+
+此外还对外还开放了记录迭代器的对应接口，在此不作过多赘述
+
+其中：
+* `createTable` 接受 Catalog Manager 传递的 table 信息，调用 Buffer Manager 为该表分配块，并准备记录访问迭代器
+* `dropTable` 接受 Catalog Manager 传递的 table 信息，根据存储的表占用块信息，依次遍历，清空对应块的所有记录，并删除对应的占用块信息
+* `insertRecord` 接受 Catalog Manager 传递的 table 信息，使用新的或缓存的记录访问迭代器，遍历各表所占用块中的槽位，直到遇见第一个空槽位并插入
+* `selectAllRecords` 接受 table 信息，从头开始访问表的所有存储块，若槽位中存有数据则将其加入结果数组。这是 `selectRecord` 的优化版本
+* `selectRecord` 接受 table 信息，从头开始访问表的所有存储块，若槽位中存有数据，且满足所有查询条件，则将其加入结果数组
+* `deleteAllRecords` 接受 table 信息，从头开始访问表的所有存储块，若槽位中存有数据则将其无效化。这是 `deleteRecord` 的优化版本
+* `deleteRecord` 接受 table 信息，从头开始访问表的所有存储块，若槽位中存有数据，且满足所有查询条件，则将其无效化
+* `getIterator` 接受 table 信息，暴露一个从头开始的记录访问迭代器以供其他组件使用
+
+#### 实现细节
+
+* Record Manager 在构造函数中读取了磁盘中存下的表占用块信息，实现初始化。在析构函数中将表占用块信息写回，保证了数据安全性。由于表-块对应关系的数据频繁访问且可能跨 block，因此单独存储于文件中。
+* Record Manager 实现了单块无序多记录存储。Record Manager 借助 RecordAccessProxy 所提供的接口，可以遍历块上的所有可能的数据存储槽位，并调用接口来判断此处是否存有有效数据。在条件查询/删除的情境下，在判断有效性后，Record Manager还会进一步判断该记录是否满足条件。
+* RecordAccessProxy封装了低级块操作。RecordAccessProxy 可以根据 Catalog Manager 提供的记录长度信息，递增数据指针指向下一条记录。若修改过当前块，则对 block 置 dirty_ 位以通知 Buffer Manager 择机回写该块。 当指针即将指出当前 block 时，RecordAccessProxy 会查找下一有效 block，并且修改 block 指针、设置新块和旧块的 pin 状态。若已到达最后一块的结尾时，则会返回失败状态。可以通过 RAP 的接口来调用 Buffer Manager 来分配一个新的空闲块，以供插入。此外，RAP还提供了元组提取、块位置提取接口以供其他组件使用
+  
 ## 程序展示
 
 ## 总结
