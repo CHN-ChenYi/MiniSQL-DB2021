@@ -22,17 +22,19 @@ bool DropTable(const string &table_name) {
   return true;
 }
 
-
-
 bool CreateIndex(const string &table_name, const string &index_name,
                  const string &column) {
+  if (!catalog_manager.CreateIndex(table_name, column, index_name))
+    return false;
   // untested↓
   // if (!index_manager.CreateIndex(catalog_manager.TableInfo(table_name),
   // index_name, column)) return false;
   return true;
 }
 
-void DropIndex(const string &index_name) {}
+bool DropIndex(const string &index_name) {
+  if (!catalog_manager.DropIndex(index_name)) return false;
+}
 
 void Select(const string &table_name, const vector<Condition> &conditions) {
   vector<Tuple> res;

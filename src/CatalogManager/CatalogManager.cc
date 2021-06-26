@@ -55,6 +55,39 @@ bool CatalogManager::CreateTable(
   return true;
 }
 
+bool CatalogManager::CreateIndex(const string &table_name,
+                                 const string &attribute_name,
+                                 const string &index_name) {
+  if (!tables_.contains(table_name)) return false;
+  auto &table = tables_[table_name];
+  if (!table.attributes.contains(attribute_name)) return false;
+  if (table.indexes.contains(attribute_name)) return false;
+  if (std::get<2>(table.attributes[attribute_name]) !=
+      SpecialAttribute::UniqueKey)
+    return false;
+  for (const auto &i : tables_) {
+    for (const auto &index : i.second.indexes) {
+      if (index.second == index_name) return false;
+    }
+  }
+  table.indexes[attribute_name] = index_name;
+}
+
+bool CatalogManager::DropIndex(const string &index_name) {
+  for (auto &table : tables_) {
+    for (const auto &index : table.second.indexes) {
+      if (index.second == index_name) {
+        if (std::get<2>(table.second.attributes[index.first]) ==
+            SpecialAttribute::PrimaryKey)
+          return false;
+        table.second.indexes.erase(index.first);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 const Table &CatalogManager::TableInfo(const string &table_name) {
   if (!tables_.contains(table_name)) {
     std::cerr << "such a table doesn't exist" << std::endl;

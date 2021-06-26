@@ -40,7 +40,7 @@ bool CreateIndex(const string &table_name, const string &index_name,
  *
  * @param index_name the name of the index
  */
-void DropIndex(const string &index_name);
+bool DropIndex(const string &index_name);
 
 /**
  * @brief Select specified records from a table (Print it to stdout)

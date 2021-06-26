@@ -35,6 +35,25 @@ class CatalogManager {
       const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes);
 
   /**
+   * @brief Create an index
+   *
+   * @param table_name the name of the table
+   * @param attribute_name the name of the attribute
+   * @param index_name the name of the index
+   * @return true if successful
+   */
+  bool CreateIndex(const string &table_name, const string &attribute_name,
+                   const string &index_name);
+
+  /**
+   * @brief Drop an index
+   *
+   * @param index_name the name of the index
+   * @return true if successful
+   */
+  bool DropIndex(const string &index_name);
+
+  /**
    * @brief Fetch a table's catalog
    *
    * @param table_name the name of the table
