@@ -80,6 +80,30 @@
 
 ### Buffer Manager 模块
 
+Buffer Manager 提供了基本的 Block 抽象。主要对外接口为以下三个：
+
+``` c++
+Block *Read(const size_t &block_id);
+
+size_t Create(Block *block);
+
+size_t NextId();
+```
+
+其中：
+
+* `Read` 通过 block_id 取回对应的 block，如果 block 在内存中，则直接取回。如果不在，则从磁盘中读入 block，此时如果 buffer 已经满了，则找到未被访问时间最久的没有被 pin 住的 block，将其写回磁盘并换出 buffer。
+* `Create` 将别的模块生成的新的 block 加入 buffer 中，若 buffer 已满，则与 `Read` 行为一致。
+* `NextId` 返回下一个 `Create` 操作会返回的 block_id。
+
+#### 实现细节
+
+* Buffer Manager 在构造函数中读取了磁盘中最大的 block_id，实现了初始化。在析构函数中将所有还在 buffer 中的脏 block 全部写回磁盘，保证了数据安全性。
+* Buffer Manager 有三个版本，通过编译选项进行开关：
+  * 基础版本为裸实现。即文件写操作在主线程中执行。
+  * 第二个版本通过 c++ 的 std::future 以及 std::async 实现了异步非阻塞的文件写操作，从而实现了数据库运算与 IO 并行，一定程度上优化了性能。（在 CMake 中通过 ParallelWrite 选项默认打开）
+  * 第三个版本通过 std::mutex, std::atomic, std::condition_variable 等实现了一个线程池，在 MiniSQL 程序打开时默认新建（机器核数 - 1）个线程用于磁盘写操作。规避了在第二个版本中线程生成与销毁的开销，进一步优化了性能。（在 TaskPool.hpp 中通过宏定义 UseThreadPool 默认打开）
+
 ### Catalog Manager 模块
 
 ### Index Manager 模块
