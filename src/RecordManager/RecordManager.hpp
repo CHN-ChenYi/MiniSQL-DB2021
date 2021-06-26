@@ -72,6 +72,7 @@ class RecordManager {
                              const vector<Condition>& conds);
   size_t deleteRecord(const Table& table, const vector<Condition>& conds);
   size_t deleteAllRecords(const Table& table);
+  RecordAccessProxy getIterator(const Table &table);
 };
 
 extern RecordManager record_manager;

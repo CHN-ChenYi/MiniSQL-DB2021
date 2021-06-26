@@ -423,4 +423,9 @@ size_t RecordManager::deleteAllRecords(const Table &table) {
   return n;
 }
 
+RecordAccessProxy RecordManager::getIterator(const Table &table) {
+  RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
+  return rap;
+}
+
 RecordManager record_manager;
