@@ -1,3 +1,2 @@
 #!/bin/sh
-rm *.block
-rm *.data
+rm -r .MiniSQL
