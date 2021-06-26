@@ -582,8 +582,9 @@ void Interpreter::parseValue() {
 }
 
 void Interpreter::parseSelectStat() {
+  bool redirect = false;
   expect("select"sv);
-  if (peek("*")) {
+  if (peek("*"sv)) {
     skip("*"sv);
   } else {
     parseClauseAttributeList();
@@ -591,7 +592,9 @@ void Interpreter::parseSelectStat() {
   expect("from"sv);
   parseId();
   table_name = cur_tok;
-  if (peek("where")) parseWhereClause();
+  if (peek("where"sv)) parseWhereClause();
+  if (consume("#"sv))
+    redirect = true;
   parseStatEnd();
 #ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: select";
@@ -614,7 +617,7 @@ void Interpreter::parseSelectStat() {
 #endif
 
   checkAndFixCondition();
-  Select(string(table_name.sv), cur_conditions);
+  Select(string(table_name.sv), cur_conditions, redirect);
 }
 
 void Interpreter::parseDeleteStat() {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <corecrt.h>
 #include <cassert>
 #include <climits>
 #include <cstdint>
@@ -69,8 +70,8 @@ class RecordManager {
   vector<Tuple> selectAllRecords(const Table& table);
   vector<Tuple> selectRecord(const Table& table,
                              const vector<Condition>& conds);
-  void deleteRecord(const Table& table, const vector<Condition>& conds);
-  void deleteAllRecords(const Table& table);
+  size_t deleteRecord(const Table& table, const vector<Condition>& conds);
+  size_t deleteAllRecords(const Table& table);
 };
 
 extern RecordManager record_manager;

@@ -37,7 +37,8 @@ bool DropIndex(const string &index_name) {
   if (!catalog_manager.DropIndex(index_name)) return false;
 }
 
-void Select(const string &table_name, const vector<Condition> &conditions) {
+void Select(const string &table_name, const vector<Condition> &conditions,
+            bool redirect) {
   vector<Tuple> res;
   if (conditions.empty())
     res =
@@ -45,9 +46,18 @@ void Select(const string &table_name, const vector<Condition> &conditions) {
   else
     res = record_manager.selectRecord(catalog_manager.TableInfo(table_name),
                                       conditions);
-  for (auto &v : res) {
-    std::cout << static_cast<std::string>(v) << std::endl;
+  std::ofstream out("output.txt");
+  if (redirect) {
+    for (auto &v : res) {
+      out << static_cast<std::string>(v) << std::endl;
+    }
+  } else {
+    for (auto &v : res) {
+      std::cout << static_cast<std::string>(v) << std::endl;
+    }
   }
+  std::cout << ANSI_COLOR_CYAN << res.size() << ANSI_COLOR_RESET " rows in set"
+            << std::endl;
 }
 
 void Insert(const string &table_name, const Tuple &tuple) {
@@ -59,9 +69,12 @@ void Insert(const string &table_name, const Tuple &tuple) {
 }
 
 void Delete(const string &table_name, const vector<Condition> &conditions) {
+  size_t n;
   if (conditions.empty())
-    record_manager.deleteAllRecords(catalog_manager.TableInfo(table_name));
+    n = record_manager.deleteAllRecords(catalog_manager.TableInfo(table_name));
   else
-    record_manager.deleteRecord(catalog_manager.TableInfo(table_name),
-                                conditions);
+    n = record_manager.deleteRecord(catalog_manager.TableInfo(table_name),
+                                    conditions);
+  std::cout << ANSI_COLOR_CYAN << n << ANSI_COLOR_RESET " rows affect"
+            << std::endl;
 }

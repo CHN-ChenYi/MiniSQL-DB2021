@@ -1,5 +1,7 @@
 #include "RecordManager.hpp"
 
+#include <corecrt.h>
+
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -392,26 +394,33 @@ vector<Tuple> RecordManager::selectAllRecords(const Table &table) {
   return res;
 }
 
-void RecordManager::deleteRecord(const Table &table,
-                                 const vector<Condition> &conds) {
+size_t RecordManager::deleteRecord(const Table &table,
+                                   const vector<Condition> &conds) {
+  size_t n = 0;
   checkTableName(table);
   checkConditionValid(table, conds);
   RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
   auto conds_ = convertConditions(table, conds);
   do {
     if (!rap.isCurrentSlotValid()) continue;
-    if (checkRecordSatisfyCondition(conds_, rap.getRawData()))
+    if (checkRecordSatisfyCondition(conds_, rap.getRawData())) {
       rap.deleteRecord();
+      n++;
+    }
   } while (rap.next());
+  return n;
 }
 
-void RecordManager::deleteAllRecords(const Table &table) {
+size_t RecordManager::deleteAllRecords(const Table &table) {
+  size_t n = 0;
   checkTableName(table);
   RecordAccessProxy rap(&table_blocks[table.table_name], &table, 0);
   do {
     if (!rap.isCurrentSlotValid()) continue;
     rap.deleteRecord();
+    n++;
   } while (rap.next());
+  return n;
 }
 
 RecordManager record_manager;

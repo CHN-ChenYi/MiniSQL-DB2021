@@ -2,6 +2,7 @@
 
 #include <tuple>
 #include <vector>
+
 using std::tuple;
 using std::vector;
 
@@ -48,8 +49,10 @@ bool DropIndex(const string &index_name);
  * @param table_name the name of the table
  * @param conditions the specified conditions. If size == 0, select all the
  * records.
+ * @param redirect whether dump output to file or not
  */
-void Select(const string &table_name, const vector<Condition> &conditions);
+void Select(const string &table_name, const vector<Condition> &conditions,
+            bool redirect);
 
 /**
  * @brief Insert a record into a table
