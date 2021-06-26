@@ -193,7 +193,7 @@ void Interpreter::checkAndFixCondition() {
             static_cast<SqlValueType>(SqlValueTypeBase::String)) {
           throw syntax_error("incompatible condition");
         }
-        if (cond.val.type >= static_cast<SqlValueType>(type)) {
+        if (cond.val.type > static_cast<SqlValueType>(type)) {
           cerr << "warning: string is too long" << endl;
         }
         cond.val.type = static_cast<SqlValueType>(type);
@@ -701,7 +701,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
       if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
         val.val.Integer = tok.i;
       else
-        val.val.Integer = tok.f;
+        val.val.Float = tok.i;
       break;
     case Interpreter::TokenKind::Float:
       if (val.type >= static_cast<SqlValueType>(SqlValueTypeBase::String)) {
@@ -709,7 +709,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
         throw invalid_value("type error");
       }
       if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
-        val.val.Float = tok.i;
+        val.val.Integer = tok.f;
       else
         val.val.Float = tok.f;
       break;
