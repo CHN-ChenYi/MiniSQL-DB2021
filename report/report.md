@@ -130,7 +130,11 @@ void BufferManagerTest() {
 }
 
 ```
-通过上述代码测试基本的 read/write, dirty/pin 的功能，为了方便查看，使用 gdb 以及 hexdump 观察结果而不是输出到 console 里面。测试是通过修改 Config 明明空间下的参数调整 buffer 的大小测试不同情况。并行输出部分的性能测试不在此处进行，而是在整个程序对接完毕之后进行。
+通过上述代码测试基本的 read/write, dirty/pin 的功能。测试是通过修改 Config 明明空间下的参数调整 buffer 的大小测试不同情况。并行输出部分的性能测试不在此处进行，而是在整个程序对接完毕之后进行。
+
+如图，是在 `Config::kMaxBlockNum` 为 5 的时候的输出：
+
+![](img/BufferManagerTest.png)
 
 ### Catalog Manager 模块
 
@@ -147,20 +151,20 @@ void BufferManagerTest() {
 #### 模块测试
 
 ```mysql
-create table student (
-        sno char(8),
-        sname char(16) unique,
-        sage int,
-        sgender char (1),
-        score float,
-        primary key ( sno )
-);
+create table student (sno char(8), sname char(16) unique, sage int, sgender char (1), score float, primary key ( sno ));
 create index stunameidx on student ( sname );
 drop index stunameidx on student;
+create index stunameidx on student ( sname );
 drop table student;
 
 ```
 通过上述代码测试基本的 create/drop table/index 的功能，为了方便查看，使用 gdb 以及 hexdump 观察结果而不是输出到 console 里面。
+
+如图，是没有执行 `drop table student;` 时的状态：
+
+![](./img/CatalogManagerTest1.png)
+
+![](./img/CatalogManagerTest2.png)
 
 ### Index Manager 模块
 

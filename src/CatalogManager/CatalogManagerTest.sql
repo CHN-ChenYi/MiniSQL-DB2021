@@ -8,4 +8,5 @@ create table student (
 );
 create index stunameidx on student ( sname );
 drop index stunameidx on student;
+create index stunameidx on student ( sname );
 drop table student;
