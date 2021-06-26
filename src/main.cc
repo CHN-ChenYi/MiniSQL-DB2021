@@ -30,10 +30,10 @@ int main(int argc, char **argv) {
       interpreter.interpretFile(path.filename());
     }
   } catch (const std::exception &e) {
-    std::cout << "Exception: " << e.what() << std::endl;
+    std::cout << "exception: " << e.what() << std::endl;
     return 1;
   } catch (...) {
-    std::cout << "Unknown Error" << std::endl;
+    std::cout << "unknown error" << std::endl;
     return 2;
   }
   return 0;

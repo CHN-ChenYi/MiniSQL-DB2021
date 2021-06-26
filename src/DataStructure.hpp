@@ -7,7 +7,9 @@
 #include <string>
 #include <tuple>
 #include <vector>
+
 #include "DataStructure.hpp"
+
 
 using std::ifstream;
 using std::map;
@@ -199,4 +201,19 @@ struct Condition {
 class syntax_error : public std::runtime_error {
  public:
   syntax_error(const char *what) : runtime_error(what) {}
+};
+
+class invalid_ident : public std::runtime_error {
+ public:
+  invalid_ident(const char *what) : runtime_error(what) {}
+};
+
+class invalid_value : public std::runtime_error {
+ public:
+  invalid_value(const char *what) : runtime_error(what) {}
+};
+
+class invalid_index_attribute : public std::runtime_error {
+ public:
+  invalid_index_attribute(const char *what) : runtime_error(what) {}
 };

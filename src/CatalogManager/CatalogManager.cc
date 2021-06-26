@@ -3,6 +3,7 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include "DataStructure.hpp"
 
 CatalogManager::CatalogManager() {
   std::ifstream os(Config::kCatalogFileName, std::ios::binary);
@@ -91,7 +92,7 @@ bool CatalogManager::DropIndex(const string &index_name) {
 const Table &CatalogManager::TableInfo(const string &table_name) {
   if (!tables_.contains(table_name)) {
     std::cerr << "such a table doesn't exist" << std::endl;
-    throw syntax_error("table not found");
+    throw invalid_ident("table not found");
   }
   return tables_[table_name];
 }
@@ -99,7 +100,7 @@ const Table &CatalogManager::TableInfo(const string &table_name) {
 void CatalogManager::DropTable(const string &table_name) {
   if (!tables_.contains(table_name)) {
     std::cerr << "such a table doesn't exist" << std::endl;
-    throw syntax_error("table not found");
+    throw invalid_ident("table not found");
   }
   tables_.erase(table_name);
 }

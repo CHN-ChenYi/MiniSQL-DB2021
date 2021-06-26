@@ -73,6 +73,17 @@ void Interpreter::interpret() {
     try {
       need_quit = parse();
     } catch (const syntax_error &err) {
+      cerr << ANSI_COLOR_RED "syntax error: " ANSI_COLOR_RESET << err.what()
+           << endl;
+    } catch (const invalid_ident &err) {
+      cerr << ANSI_COLOR_RED "invalid identifier: " ANSI_COLOR_RESET
+           << err.what() << endl;
+    } catch (const invalid_value &err) {
+      cerr << ANSI_COLOR_RED "invalid value: " ANSI_COLOR_RESET << err.what()
+           << endl;
+    } catch (const invalid_index_attribute &err) {
+      cerr << ANSI_COLOR_RED "invalid attribute for indexing: " ANSI_COLOR_RESET
+           << err.what() << endl;
     }
     if (need_quit) break;
     if (interrupt) {
@@ -88,6 +99,7 @@ void Interpreter::interpret() {
 }
 
 bool Interpreter::interpretFile(const path &filename) {
+  extern volatile std::sig_atomic_t interrupt;
   auto t1 = steady_clock::now();
   ifstream is(cur_dir / filename, std::ios::binary);
   stringstream buf;
@@ -112,8 +124,23 @@ bool Interpreter::interpretFile(const path &filename) {
     try {
       need_quit = parse();
     } catch (const syntax_error &err) {
+      cerr << ANSI_COLOR_RED "syntax error: " ANSI_COLOR_RESET << err.what()
+           << endl;
+      break;
+    } catch (const invalid_ident &err) {
+      cerr << ANSI_COLOR_RED "invalid identifier: " ANSI_COLOR_RESET
+           << err.what() << endl;
+      break;
+    } catch (const invalid_value &err) {
+      cerr << ANSI_COLOR_RED "invalid value: " ANSI_COLOR_RESET << err.what()
+           << endl;
+      break;
+    } catch (const invalid_index_attribute &err) {
+      cerr << ANSI_COLOR_RED "invalid attribute for indexing: " ANSI_COLOR_RESET
+           << err.what() << endl;
+      break;
     }
-    if (need_quit) break;
+    if (need_quit || interrupt) break;
     skipSpace();
   }
 
@@ -607,7 +634,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
     case Interpreter::TokenKind::Int:
       if (val.type >= static_cast<SqlValueType>(SqlValueTypeBase::String)) {
         cerr << "the types of the table and values don't match" << endl;
-        throw syntax_error("type error");
+        throw invalid_value("type error");
       }
       if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
         val.val.Integer = tok.i;
@@ -617,7 +644,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
     case Interpreter::TokenKind::Float:
       if (val.type >= static_cast<SqlValueType>(SqlValueTypeBase::String)) {
         cerr << "the types of the table and values don't match" << endl;
-        throw syntax_error("type error");
+        throw invalid_value("type error");
       }
       if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
         val.val.Float = tok.i;
@@ -630,7 +657,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
         cerr << "the types of the table and values don't match: requires a "
                 "string"
              << endl;
-        throw syntax_error("type error");
+        throw invalid_value("type error");
       }
       memcpy(val.val.String, tok.sv.data(), tok.sv.size());
       if (tok.sv.size() < Config::kMaxStringLength)

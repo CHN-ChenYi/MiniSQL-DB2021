@@ -232,14 +232,14 @@ void RecordManager::checkConditionValid(const Table &table,
     if (!table.attributes.contains(cond.attribute)) {
       std::cerr << "no such an attribute `" ANSI_COLOR_RED << cond.attribute
                 << ANSI_COLOR_RESET " `referenced in condition" << std::endl;
-      throw syntax_error("invalid attribute name");
+      throw invalid_ident("invalid attribute name");
     }
 }
 
 void RecordManager::checkTableName(const Table &table) {
   if (!table_blocks.contains(table.table_name)) {
     std::cerr << "such a table doesn't exist" << std::endl;
-    throw syntax_error("table not found");
+    throw invalid_ident("table not found");
   }
 }
 
