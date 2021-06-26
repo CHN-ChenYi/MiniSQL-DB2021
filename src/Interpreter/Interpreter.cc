@@ -260,6 +260,11 @@ void Interpreter::parseAttribute() {
     val_type = static_cast<SqlValueType>(SqlValueTypeBase::String) +
                (unsigned)cur_tok.i;
     expect(")");
+  } else {
+    cerr << "expect a valid attribute type among " ANSI_COLOR_GREEN
+            "[int, float, char]" ANSI_COLOR_RESET
+         << endl;
+    throw syntax_error("invalid attribute type");
   }
 
   if (peek("unique")) {
