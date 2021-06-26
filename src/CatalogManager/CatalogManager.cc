@@ -3,6 +3,7 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+
 #include "DataStructure.hpp"
 
 CatalogManager::CatalogManager() {
@@ -74,16 +75,17 @@ bool CatalogManager::CreateIndex(const string &table_name,
   table.indexes[attribute_name] = index_name;
 }
 
-bool CatalogManager::DropIndex(const string &index_name) {
-  for (auto &table : tables_) {
-    for (const auto &index : table.second.indexes) {
-      if (index.second == index_name) {
-        if (std::get<2>(table.second.attributes[index.first]) ==
-            SpecialAttribute::PrimaryKey)
-          return false;
-        table.second.indexes.erase(index.first);
-        return true;
-      }
+bool CatalogManager::DropIndex(const string &table_name,
+                               const string &index_name) {
+  if (!tables_.contains(table_name)) return false;
+  auto &table = tables_[table_name];
+  for (const auto &index : table.indexes) {
+    if (index.second == index_name) {
+      if (std::get<2>(table.attributes[index.first]) ==
+          SpecialAttribute::PrimaryKey)
+        return false;
+      table.indexes.erase(index.first);
+      return true;
     }
   }
   return false;

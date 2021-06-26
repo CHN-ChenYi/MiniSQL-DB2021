@@ -3,6 +3,7 @@
 #include "CatalogManager.hpp"
 #include "DataStructure.hpp"
 #include "IndexManager.hpp"
+#include "Interpreter.hpp"
 #include "RecordManager.hpp"
 
 bool CreateTable(
@@ -34,7 +35,7 @@ bool CreateIndex(const string &table_name, const string &index_name,
 }
 
 bool DropIndex(const string &table_name, const string &index_name) {
-  if (!catalog_manager.DropIndex(index_name)) return false;
+  if (!catalog_manager.DropIndex(table_name, index_name)) return false;
   //if (!index_manager.DropIndex(index_name)) return false;
   //return true;
 }
@@ -58,14 +59,17 @@ void Select(const string &table_name, const vector<Condition> &conditions,
       std::cout << static_cast<std::string>(v) << std::endl;
     }
   }
-  std::cout << ANSI_COLOR_CYAN << res.size() << ANSI_COLOR_RESET " rows in set"
-            << std::endl;
 }
 
 void Insert(const string &table_name, const Tuple &tuple) {
   Position pos =
       record_manager.insertRecord(catalog_manager.TableInfo(table_name), tuple);
   index_manager.InsertKey(catalog_manager.TableInfo(table_name), tuple, pos);
+}
+
+void InsertFast(const Table &table, const Tuple &tp,
+                const vector<tuple<const char *, size_t, size_t>> &unique) {
+  record_manager.insertRecordUnique(table, tp, unique);
 }
 
 void Delete(const string &table_name, const vector<Condition> &conditions) {
@@ -75,6 +79,4 @@ void Delete(const string &table_name, const vector<Condition> &conditions) {
   else
     n = record_manager.deleteRecord(catalog_manager.TableInfo(table_name),
                                     conditions);
-  std::cout << ANSI_COLOR_CYAN << n << ANSI_COLOR_RESET " rows affect"
-            << std::endl;
 }

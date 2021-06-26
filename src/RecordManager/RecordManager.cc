@@ -1,10 +1,9 @@
 #include "RecordManager.hpp"
 
-#include <corecrt.h>
-
 #include <fstream>
 #include <iostream>
 #include <ostream>
+#include <stdexcept>
 #include <utility>
 
 #include "BufferManager.hpp"
@@ -200,6 +199,18 @@ RecordManager::~RecordManager() {
   }
 }
 
+bool RecordManager::checkAttributeUnique(const Table &table,
+                                         vector<size_t> &blks, const char *v,
+                                         size_t len, size_t offset) {
+  RecordAccessProxy rap(&blks, &table, 0);
+  do {
+    if (!rap.isCurrentSlotValid()) continue;
+    auto data = rap.getRawData();
+    if (memcmp(data + offset, v, len) == 0) return false;
+  } while (rap.next());
+  return true;
+}
+
 bool RecordManager::createTable(const Table &table) {
   if (table_blocks.contains(table.table_name)) {
     cerr << "such a table already exists" << endl;
@@ -365,6 +376,29 @@ Position RecordManager::insertRecord(const Table &table, const Tuple &tuple) {
     }
   }
   access.modifyData(tuple);
+  return access.extractPostion();
+}
+
+Position RecordManager::insertRecordUnique(
+    const Table &table, const Tuple &tp,
+    const vector<tuple<const char *, size_t, size_t>> &unique) {
+  if (!table_current.contains(table.table_name))
+    table_current[table.table_name] =
+        RecordAccessProxy(&table_blocks[table.table_name], &table, 0);
+  auto &access = table_current[table.table_name];
+  for (auto &u : unique) {
+    auto &[p, len, offset] = u;
+    if (!checkAttributeUnique(table, *access.p_block_id_, p, len, offset)) {
+      cerr << "the record is not unique" << endl;
+      throw invalid_value("record duplicate");
+    }
+  }
+  while (access.isCurrentSlotValid()) {
+    if (!access.next()) {
+      access.newBlock();
+    }
+  }
+  access.modifyData(tp);
   return access.extractPostion();
 }
 

@@ -26,12 +26,16 @@ class Interpreter {
    * API module.
    *
    */
-  bool interpretFile(const std::filesystem::path &filename);
+  tuple<bool, size_t> interpretFile(const std::filesystem::path &filename);
   /**
    * @brief Set the base directory for relative path
    *
    */
   void setWorkdir(const std::filesystem::path &dir) { cur_dir = dir; }
+
+  void cleanAffected() { affected = 0; }
+  void addAffected(const size_t &cnt) { affected += cnt; }
+  void showAffected();
 
  private:
   static inline std::unordered_set<std::string_view> keywords = {
@@ -68,6 +72,7 @@ class Interpreter {
   std::vector<Token> cur_values;
   std::vector<Condition> cur_conditions;
   std::filesystem::path cur_dir = "";
+  size_t affected = 0;
 
   void tokenToSqlValue(SqlValue &val, const Token &tok);
   SqlValue tokenToSqlValue(const Token &tok);
@@ -108,6 +113,5 @@ class Interpreter {
  public:
   friend std::ostream &operator<<(std::ostream &out, const Token &tok);
 };
-
 
 extern Interpreter interpreter;

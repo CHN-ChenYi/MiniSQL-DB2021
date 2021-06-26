@@ -1,5 +1,7 @@
 #include "Interpreter.hpp"
 
+#include <corecrt.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -48,8 +50,15 @@ using std::filesystem::path;
 
 using namespace std::literals;
 
+#define _INTERPRETER_DEBUG
+
 int icasecmp(const char *s1, const char *s2, size_t n) {
   return strncasecmp(s1, s2, n);
+}
+
+void Interpreter::showAffected() {
+  std::cout << ANSI_COLOR_CYAN << affected << ANSI_COLOR_RESET " rows in set / affect"
+            << std::endl;
 }
 
 void Interpreter::interpret() {
@@ -99,7 +108,7 @@ void Interpreter::interpret() {
   }
 }
 
-bool Interpreter::interpretFile(const path &filename) {
+tuple<bool, size_t> Interpreter::interpretFile(const path &filename) {
   extern volatile std::sig_atomic_t interrupt;
   auto t1 = steady_clock::now();
   ifstream is(cur_dir / filename, std::ios::binary);
@@ -107,7 +116,7 @@ bool Interpreter::interpretFile(const path &filename) {
   size_t sentence_cnt = 0;
   if (!is) {
     cerr << "can't open file " << cur_dir / filename << endl;
-    return false;
+    return {false, 0};
   }
   buf << is.rdbuf();
   input = buf.str();
@@ -150,7 +159,7 @@ bool Interpreter::interpretFile(const path &filename) {
   cout << "run " ANSI_COLOR_GREEN << sentence_cnt
        << ANSI_COLOR_RESET " sentences in " ANSI_COLOR_MAGENTA << diff.count()
        << "s" ANSI_COLOR_RESET << endl;
-  return true;
+  return {true, affected};
 }
 
 void Interpreter::checkAndFixCondition() {
@@ -193,7 +202,7 @@ void Interpreter::checkAndFixCondition() {
             static_cast<SqlValueType>(SqlValueTypeBase::String)) {
           throw syntax_error("incompatible condition");
         }
-        if (cond.val.type >= static_cast<SqlValueType>(type)) {
+        if (cond.val.type > static_cast<SqlValueType>(type)) {
           cerr << "warning: string is too long" << endl;
         }
         cond.val.type = static_cast<SqlValueType>(type);
@@ -595,8 +604,7 @@ void Interpreter::parseSelectStat() {
   parseId();
   table_name = cur_tok;
   if (peek("where"sv)) parseWhereClause();
-  if (consume("#"sv))
-    redirect = true;
+  if (consume("#"sv)) redirect = true;
   parseStatEnd();
 #ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: select";
@@ -657,9 +665,20 @@ void Interpreter::parseDeleteStat() {
 }
 
 void Interpreter::parseInsertStat() {
+  bool not_changed;
+  static Tuple tp;
+  static Token last_insert_table_name;
+  const static Table *last_table;
+  static vector<tuple<const char *, size_t, size_t>> need_unique;
   expect("insert"sv);
   expect("into"sv);
   parseId();
+  if (cur_tok.sv == last_insert_table_name.sv)
+    not_changed = true;
+  else {
+    not_changed = false;
+    last_insert_table_name = cur_tok;
+  }
   table_name = cur_tok;
   expect("values"sv);
   expect("("sv);
@@ -675,15 +694,34 @@ void Interpreter::parseInsertStat() {
     cout << "  " << v << endl;
   }
 #endif
-  Tuple t = catalog_manager.TableInfo(string(table_name.sv)).makeEmptyTuple();
-  if (t.values.size() != cur_values.size()) {
-    cerr << "the number of values doesn't match";
+
+  if (!not_changed) {
+    last_table = &catalog_manager.TableInfo(string(table_name.sv));
+    tp = last_table->makeEmptyTuple();
+  }
+  if (tp.values.size() != cur_values.size()) {
+    cerr << "the number of values doesn't match" << endl;
     throw syntax_error("the number of value wrong");
   }
-  for (size_t i = 0; i < t.values.size(); ++i) {
-    tokenToSqlValue(t.values[i], cur_values[i]);
+  for (size_t i = 0; i < tp.values.size(); ++i) {
+    tokenToSqlValue(tp.values[i], cur_values[i]);
   }
-  Insert(string(table_name.sv), t);
+  if (!not_changed) {
+    need_unique.clear();
+    for (auto &[_1, value] : last_table->attributes) {
+      auto &[idx, type, special, offset] = value;
+      if (special >= SpecialAttribute::PrimaryKey) {
+        size_t len = type;
+        if (type >= static_cast<SqlValueType>(SqlValueTypeBase::String))
+          len -= static_cast<SqlValueType>(SqlValueTypeBase::String);
+        else
+          len = sizeof(int);
+        need_unique.push_back(
+            {reinterpret_cast<const char *>(&tp.values[idx].val), len, offset});
+      }
+    }
+  }
+  InsertFast(*last_table, tp, need_unique);
 }
 
 void Interpreter::parseWhereClause() {
@@ -701,7 +739,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
       if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
         val.val.Integer = tok.i;
       else
-        val.val.Integer = tok.f;
+        val.val.Float = tok.i;
       break;
     case Interpreter::TokenKind::Float:
       if (val.type >= static_cast<SqlValueType>(SqlValueTypeBase::String)) {
@@ -709,7 +747,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
         throw invalid_value("type error");
       }
       if (val.type == static_cast<SqlValueType>(SqlValueTypeBase::Integer))
-        val.val.Float = tok.i;
+        val.val.Integer = tok.f;
       else
         val.val.Float = tok.f;
       break;
@@ -717,7 +755,7 @@ void Interpreter::tokenToSqlValue(SqlValue &val, const Token &tok) {
       if (val.type < tok.sv.length() +
                          static_cast<SqlValueType>(SqlValueTypeBase::String)) {
         cerr << "the types of the table and values don't match: requires a "
-                "string"
+                "number"
              << endl;
         throw invalid_value("type error");
       }

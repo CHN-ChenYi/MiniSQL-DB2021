@@ -33,12 +33,12 @@ const string kRecordFileName = CommonPathPrefix "Record.data";
 const string kIndexFileName = CommonPathPrefix "Index.data";
 const string kCatalogFileName = CommonPathPrefix "Catalog.data";
 const int kMaxStringLength = 256;
-const int kBlockSize = 8 * 1024;
+const int kBlockSize = 16 * 1024;
 const int kNodeCapacity = 15;  // 8 + ( 256 + 16 ) * ( 15 - 1 ) + 16 + 16
 #ifdef _DEBUG
 const int kMaxBlockNum = 10;
 #else
-const int kMaxBlockNum = 128;
+const int kMaxBlockNum = 256;
 #endif
 }  // namespace Config
 

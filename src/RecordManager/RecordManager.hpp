@@ -1,6 +1,5 @@
 #pragma once
 
-#include <corecrt.h>
 #include <cassert>
 #include <climits>
 #include <cstdint>
@@ -48,7 +47,6 @@ struct RecordAccessProxy {
 };
 
 class RecordManager {
-
   unordered_map<std::string, vector<size_t>> table_blocks;
   unordered_map<std::string, RecordAccessProxy> table_current;
 
@@ -60,6 +58,8 @@ class RecordManager {
   bool checkRecordSatisfyCondition(
       const vector<tuple<Operator, SqlValue, size_t>>& conds, char* record);
   bool rawCompare(Operator op, SqlValue val, size_t offset, char* record);
+  bool checkAttributeUnique(const Table& table, vector<size_t>& blks,
+                            const char* v, size_t len, size_t offset);
 
  public:
   RecordManager();
@@ -67,12 +67,15 @@ class RecordManager {
   bool createTable(const Table& table);
   bool dropTable(const Table& table);
   Position insertRecord(const Table& table, const Tuple& tuple);
+  Position insertRecordUnique(
+      const Table& table, const Tuple& tp,
+      const vector<tuple<const char*, size_t, size_t>>& unique);
   vector<Tuple> selectAllRecords(const Table& table);
   vector<Tuple> selectRecord(const Table& table,
                              const vector<Condition>& conds);
   size_t deleteRecord(const Table& table, const vector<Condition>& conds);
   size_t deleteAllRecords(const Table& table);
-  RecordAccessProxy getIterator(const Table &table);
+  RecordAccessProxy getIterator(const Table& table);
 };
 
 extern RecordManager record_manager;
