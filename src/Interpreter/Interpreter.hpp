@@ -109,6 +109,7 @@ class Interpreter {
   void parseRelationClause();
   bool parse();
   bool parseLine();
+  void parseComment();
 
  public:
   friend std::ostream &operator<<(std::ostream &out, const Token &tok);

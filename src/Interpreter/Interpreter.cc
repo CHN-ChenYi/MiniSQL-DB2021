@@ -27,7 +27,6 @@
 #include "CatalogManager.hpp"
 #include "DataStructure.hpp"
 
-
 using std::cerr;
 using std::cin;
 using std::cout;
@@ -81,7 +80,7 @@ void Interpreter::interpret() {
     bool need_quit = false;
     cleanAffected();
     try {
-      need_quit = parse();
+      need_quit = parseLine();
     } catch (const syntax_error &err) {
       cerr << ANSI_COLOR_RED "syntax error: " ANSI_COLOR_RESET << err.what()
            << endl;
@@ -639,9 +638,7 @@ void Interpreter::parseSelectStat() {
       out << static_cast<std::string>(v) << std::endl;
     }
   } else {
-    std::cout << "+"
-              << string(32, '-')
-              << "+" << std::endl;
+    std::cout << "+" << string(32, '-') << "+" << std::endl;
     for (auto &v : res) {
       std::cout << static_cast<std::string>(v) << std::endl;
     }
@@ -856,6 +853,11 @@ void Interpreter::parseStatEnd() {
   if (!consume(";"sv)) expect("."sv);
 }
 
+void Interpreter::parseComment() {
+  expect("--");
+  while (iter != input.end() && !strchr("\t\n\r", *iter)) iter++;
+}
+
 bool Interpreter::parse() {
   auto backup = iter;
   if (peek("insert")) {
@@ -891,6 +893,8 @@ bool Interpreter::parse() {
     parseSelectStat();
   } else if (peek("delete")) {
     parseDeleteStat();
+  } else if (peek("--")) {
+    parseComment();
   } else {
     cerr << "expect a valid sentence" << endl;
     iter = input.end();

@@ -14,8 +14,8 @@ bool CreateTable(
     return false;
   // Problem to be solved ↓↓↓
   // PrimaryKeyIndex won't call catalog_manager.CreateIndex
-  // if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
-  // return false;
+  if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
+    return false;
 }
 
 bool DropTable(const string &table_name) {
