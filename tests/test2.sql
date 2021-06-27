@@ -19,4 +19,4 @@ select * from student2 where name = "name90000";
 select * from student2 where score = 100 and name="name90000"; --(x))    "name89958"(✔)
 
 -- test > < <> (optional)
-select * from student2 where score > 99
+select * from student2 where score > 99;
