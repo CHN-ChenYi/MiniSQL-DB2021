@@ -104,6 +104,7 @@ void CatalogManager::DropIndex(const string &table_name,
         throw invalid_ident("drop primary key index");
       }
       table.indexes.erase(index.first);
+      return;
     }
   }
   std::cerr << "such an index doesn't exist" << std::endl;
