@@ -476,6 +476,27 @@ RecordAccessProxy getIterator(const Table &table);
 
 * RecordAccessProxy封装了低级块操作。RecordAccessProxy 可以根据 Catalog Manager 提供的记录长度信息，递增数据指针指向下一条记录。若修改过当前块，则对 block 置 dirty_ 位以通知 Buffer Manager 择机回写该块。 当指针即将指出当前 block 时，RecordAccessProxy 会查找下一有效 block，并且修改 block 指针、设置新块和旧块的 pin 状态。若已到达最后一块的结尾时，则会返回失败状态。可以通过 RAP 的接口来调用 Buffer Manager 来分配一个新的空闲块，以供插入。此外，RAP还提供了元组提取、块位置提取接口以供其他组件使用
 
+* **Record Manager 使用的优化后的memcmp**：
+
+  ```c++
+  #include <immintrin.h>
+  
+  inline int memcmp128(const void *p1, const void *p2, size_t count) {
+    const __m128i_u *s1 = (__m128i_u *)p1;
+    const __m128i_u *s2 = (__m128i_u *)p2;
+  
+    while (count--) {
+      __m128i item1 = _mm_lddqu_si128(s1++);
+      __m128i item2 = _mm_lddqu_si128(s2++);
+      __m128i result = _mm_cmpeq_epi64(item1, item2);
+      if (!(unsigned int)_mm_test_all_ones(result)) {
+        return -1;
+      }
+    }
+    return 0;
+  }
+  ```
+
 #### 模块测试
 
 Record Manager 模块的功能单独测试并不能很好体现，因此选择在**关闭 Index Manager** 的情况下进行实际测试。
@@ -522,6 +543,10 @@ Record Manager 模块的功能单独测试并不能很好体现，因此选择�
 
 ![image-20210627103712110](./img/ProgramTest2.png)
 
+- 10w测试集合（memcmp优化）
+
+![image-20210627170107727](./img/ProgramTest3.png)
+
 ## 总结与感想
 
 <!-- git 版本的这里我用假名了（逃 -->
@@ -542,7 +567,7 @@ Record Manager 模块的功能单独测试并不能很好体现，因此选择�
 
 Interpreter 由于是手工编写而非 bison 生成，因此码量较多。由于认为单纯的字符串 split 不能满足要求，因此我采用了比较正规的tokenizing 和 parsing 流程，使用递归下降的方式编写了一个LL(1)解析器。在 Interpreter 的编写过程中，细节的考虑是比较困难的。比如说，解析浮点数和整数字面值时，如何正确区分并解析，我采取的办法是同时试探浮点与整数解析，选择能解析更长长度的类型作为字面值的类型，否则就默认为整数，这样可以避免较大整数时使用 float 丢失精度。此外，用户在输入带有条件的语句后，需要适当处理进行类型转换，以使待比较的值符合表 schema 的定义（数值间互转，字符串添补和截取），进而避免因字符串比较发生缓冲区溢出的错误。当发生嵌套的`execfile`时，如果紧跟一个相对目录，那么这个相对目录的当前目录会不时发生变化，而我刚开始没考虑到这一点，因此导致直接`execfile Test2/student.txt`会找不到后续 instruction*.txt 的位置，于是我需要额外加上工作目录的成员变量。异常处理也是反反复复修改后完成的，我刚开始一律向外抛 std::runtime_error ，但之后发现要考虑不可恢复异常和可恢复异常（如用户语法错误、无效标识符等），因此额外使用了几种异常类。
 
-Record Manager 的设计方案经过了几次迭代。起初我打算在 block 尾部设置额外的 bitmap 来标记无效槽位，但在分析数据量后，我得出使用顺序记录 record 并在 record 前保留 1 byte 的 tag 更符合我们的需求。在进行 select 操作时，我发现直接使用`< "attribute", = , value >`三元组效率不佳，因为 attribute 名需要先去 Catalog Manager 通过查表才能获取它在record 中的 offset，需要多次间接指针访问与内存拷贝，于是我需要先把条件转换为更加有利于比较的形式。在维持unique性质上也出现了类似的情况，由于需要在 index 关闭的情况下确保唯一性，因此我只能使用线性查找的方法。然而，如果插入大数据集时，每插入一条记录，我都复用 Select 的代码，构造一些对象去去比较相等性，那么开销会难以接受，因而我设置了额外的快速路径，并在 Interpreter 中判断表名是否和上一次相同，如果相同则复用这些对象，从而避免大数据规模插入时的很多内存拷贝的开销。除此之外，我还构想了使用 Xor Filter 等类似布隆过滤器的概率算法来更快的判断 value 是否一定不存在或者可能存在，由于误报率仅有0.x%级别，因此我们可以在没有 index 、大数据规模的情况下，仅介入很少的线性查找，从而提升性能，不过由于时间关系尚未实现。
+Record Manager 的设计方案经过了几次迭代。起初我打算在 block 尾部设置额外的 bitmap 来标记无效槽位，但在分析数据量后，我得出使用顺序记录 record 并在 record 前保留 1 byte 的 tag 更符合我们的需求。在进行 select 操作时，我发现直接使用`< "attribute", = , value >`三元组效率不佳，因为 attribute 名需要先去 Catalog Manager 通过查表才能获取它在record 中的 offset，需要多次间接指针访问与内存拷贝，于是我需要先把条件转换为更加有利于比较的形式。在维持unique性质上也出现了类似的情况，由于需要在 index 关闭的情况下确保唯一性，因此我只能使用线性查找的方法。然而，如果插入大数据集时，每插入一条记录，我都复用 Select 的代码，构造一些对象去去比较相等性，那么开销会难以接受，因而我设置了额外的快速路径，并在 Interpreter 中判断表名是否和上一次相同，如果相同则复用这些对象，从而避免大数据规模插入时的很多内存拷贝和分配的开销。在 index 尚未就绪时，由于线性查找速度较慢，插入10w大小需要近40s。在排查问题后，发现由于我们使用的 gcc 默认将 `memcmp` 链接到了 Windows 自带的C库 msvcrt.dll 上，而其中的实现并没有充分利用现代处理器的特性。因此自行编写了利用SIMD进行比较的 memcmp 版本，并将 record  内的 string padding 到 16字节，从而大大缩短了运行时间。除此之外，我还构想了使用 Xor Filter 等类似布隆过滤器的概率算法来更快的判断 value 是否一定不存在或者可能存在，由于误报率仅有0.x%级别，因此我们可以在没有 index 、大数据规模的情况下，仅介入很少的线性查找，从而提升性能，不过由于时间关系尚未实现。
 
 主程序中，Ctrl-C中断处理也是一个需要考虑的问题，需要让各模块正确析构才能保证数据库的一致性。TO/GA 同学完成了原型，但是由于一些平台特性而只能在Linux下工作。我额外设置了一个原子信号量std::sig_atomic_t，从而使得程序的正常逻辑中能捕获到Ctrl-C信号，并执行退出，从而保证正常析构流程。
 
