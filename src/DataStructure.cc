@@ -100,13 +100,12 @@ size_t Table::getAttributeSize() const {
 
 Tuple Table::makeEmptyTuple() const {
   static Tuple res;
-  if (res.values.empty()) {
-    size_t cnt = attributes.size();
-    res.values.resize(cnt);
-    for (auto &[_1, attr] : attributes) {
-      auto &[idx, type, _3, _4] = attr;
-      res.values[idx].type = type;
-    }
+  if (!res.values.empty()) res.values.clear();
+  size_t cnt = attributes.size();
+  res.values.resize(cnt);
+  for (auto &[_1, attr] : attributes) {
+    auto &[idx, type, _3, _4] = attr;
+    res.values[idx].type = type;
   }
   return res;
 }
