@@ -72,7 +72,100 @@
 
 ### 基本流程
 
-<!-- TODO -->
+#### 创建表
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[API::CreateTable]
+	subgraph exec
+		2 --> 3[CatalogManager::CreateTable]
+		2 --> 4[RecordManager::CreateTable]
+		2 --> 5[IndexManager::PrimaryKeyIndex]
+	end
+```
+
+#### 删除表
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[API::DropTable]
+	subgraph exec
+		2 --> 4[RecordManager::DropTable]
+		2 --> 3[CatalogManager::DropTable]
+		2 --> 5[IndexManager::DropAllIndex]
+	end
+```
+
+#### 创建索引
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[API::CreateIndex]
+	subgraph exec
+		2 --> 3[CatalogManager::CreateIndex]
+		2 --> 5[IndexManager::CreateIndex]
+	end
+```
+
+#### 删除索引
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[API::DropIndex]
+	subgraph exec
+		2 --> 3[CatalogManager::DropIndex]
+		2 --> 5[IndexManager::DropIndex]
+	end
+```
+
+#### 选择记录
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[API::Select]
+	subgraph exec
+		2 --> 3[CatalogManager::TableInfo]
+		2 -.条件与 index 无关.-> 4[RecordManager::Select]
+		2 -.条件与 index 有关.-> 5[IndexManager::Select]
+	end
+```
+
+#### 插入记录
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[API::Insert]
+	subgraph exec
+		2 --> 3[CatalogManager::TableInfo]
+		2 --> 4[RecordManager::Insert]
+		2 --> 5[IndexManager::InsertKey]
+	end
+```
+
+#### 删除记录
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[API::Delete]
+	subgraph exec
+		2 --> 3[CatalogManager::TableInfo]
+		2 --> 4[RecordManager::deleteRecord]
+		2 --> 5[IndexManager::RemoveKey]
+	end
+```
+
+#### 退出 MiniSQL 系统
+
+```mermaid
+graph LR
+	1[Interpreter] --> 2[End of the Program]
+	subgraph exec
+		2 --> 3["CatalogManager::~CatalogManager"]
+		2 --> 4["RecordManager::~RecordManager"]
+		2 --> 5["IndexManager::~IndexManager"]
+		2 --> 6["BufferManager::~BufferManager"]
+	end
+```
 
 ## 详细设计
 
