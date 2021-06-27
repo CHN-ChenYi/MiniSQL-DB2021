@@ -52,8 +52,8 @@ bool DropIndex(const string &table_name, const string &index_name);
  * records.
  * @param redirect whether dump output to file or not
  */
-void Select(const string &table_name, const vector<Condition> &conditions,
-            bool redirect);
+vector<Tuple> Select(const string &table_name,
+                     const vector<Condition> &conditions);
 
 /**
  * @brief Insert a record into a table
@@ -61,10 +61,10 @@ void Select(const string &table_name, const vector<Condition> &conditions,
  * @param table_name the name of the table
  * @param tuple the record
  */
-void Insert(const string &table_name, const Tuple &tuple);
+size_t Insert(const string &table_name, const Tuple &tuple);
 
-void InsertFast(const Table &table, const Tuple &tp,
-                const vector<tuple<const char *, size_t, size_t>> &unique);
+size_t InsertFast(const Table &table, const Tuple &tp,
+                  const vector<tuple<const char *, size_t, size_t>> &unique);
 
 /**
  * @brief Delete specified records from a table
@@ -73,4 +73,4 @@ void InsertFast(const Table &table, const Tuple &tp,
  * @param conditions the specified conditions. If size == 0, delete all the
  * records.
  */
-void Delete(const string &table_name, const vector<Condition> &conditions);
+size_t Delete(const string &table_name, const vector<Condition> &conditions);

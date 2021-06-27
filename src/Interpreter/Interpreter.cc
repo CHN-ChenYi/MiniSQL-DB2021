@@ -1,7 +1,5 @@
 #include "Interpreter.hpp"
 
-#include <corecrt.h>
-
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -29,6 +27,7 @@
 #include "CatalogManager.hpp"
 #include "DataStructure.hpp"
 
+
 using std::cerr;
 using std::cin;
 using std::cout;
@@ -50,15 +49,15 @@ using std::filesystem::path;
 
 using namespace std::literals;
 
-#define _INTERPRETER_DEBUG
-
 int icasecmp(const char *s1, const char *s2, size_t n) {
   return strncasecmp(s1, s2, n);
 }
 
-void Interpreter::showAffected() {
-  std::cout << ANSI_COLOR_CYAN << affected << ANSI_COLOR_RESET " rows in set / affect"
-            << std::endl;
+void Interpreter::showAffected() { showAffected(affected); }
+
+void Interpreter::showAffected(size_t cnt) {
+  std::cout << ANSI_COLOR_CYAN << cnt
+            << ANSI_COLOR_RESET " rows in set / affect" << std::endl;
 }
 
 void Interpreter::interpret() {
@@ -80,6 +79,7 @@ void Interpreter::interpret() {
 
     iter = input.begin();
     bool need_quit = false;
+    cleanAffected();
     try {
       need_quit = parse();
     } catch (const syntax_error &err) {
@@ -95,6 +95,7 @@ void Interpreter::interpret() {
       cerr << ANSI_COLOR_RED "invalid attribute for indexing: " ANSI_COLOR_RESET
            << err.what() << endl;
     }
+    showAffected();
     if (need_quit) break;
     if (interrupt) {
       cout << endl;
@@ -123,6 +124,7 @@ tuple<bool, size_t> Interpreter::interpretFile(const path &filename) {
   iter = input.begin();
   skipSpace();
 
+  cleanAffected();
   for (; iter != input.end(); ++sentence_cnt) {
     cur_tok = table_name = index_name = indexed_column_name = TokenNone;
     cur_attributes.clear();
@@ -573,7 +575,8 @@ void Interpreter::parseExec() {
   } else if (file_path.is_relative()) {
     child_interpreter.setWorkdir(cur_dir / file_path.parent_path());
   }
-  child_interpreter.interpretFile(file_path.filename());
+  auto [_, count] = child_interpreter.interpretFile(file_path.filename());
+  addAffected(count);
 }
 
 void Interpreter::parseValueList() {
@@ -627,7 +630,23 @@ void Interpreter::parseSelectStat() {
 #endif
 
   checkAndFixCondition();
-  Select(string(table_name.sv), cur_conditions, redirect);
+
+  auto res = Select(string(table_name.sv), cur_conditions);
+  std::ofstream out("output.txt");
+  if (redirect) {
+    out << "+" << string(32, '-') << "+" << std::endl;
+    for (auto &v : res) {
+      out << static_cast<std::string>(v) << std::endl;
+    }
+  } else {
+    std::cout << "+"
+              << string(32, '-')
+              << "+" << std::endl;
+    for (auto &v : res) {
+      std::cout << static_cast<std::string>(v) << std::endl;
+    }
+  }
+  addAffected(res.size());
 }
 
 void Interpreter::parseDeleteStat() {
@@ -661,7 +680,7 @@ void Interpreter::parseDeleteStat() {
   }
 #endif
   checkAndFixCondition();
-  Delete(string(table_name.sv), cur_conditions);
+  addAffected(Delete(string(table_name.sv), cur_conditions));
 }
 
 void Interpreter::parseInsertStat() {
@@ -721,7 +740,7 @@ void Interpreter::parseInsertStat() {
       }
     }
   }
-  InsertFast(*last_table, tp, need_unique);
+  addAffected(InsertFast(*last_table, tp, need_unique));
 }
 
 void Interpreter::parseWhereClause() {

@@ -220,6 +220,8 @@ void interpret();
 tuple<bool, size_t> interpretFile(const std::filesystem::path &filename);
 
 void setWorkdir(const std::filesystem::path &dir);
+
+void show
 ```
 
 其中：
@@ -240,12 +242,46 @@ create table student (sno char(8), sname char(16) unique, sage int, sgender char
 drop table student;
 create index stunameidx on student(sname);
 drop index stunameidx on student;
+select * from student2 where score >= 91.5 and score < 92 and id > 108010900;
 insert into student values ('12345678','wy',22,'M',96);
+delete from student where sage > 21 and sage < 23 and score > 95 and score <= 96;
+execfile Test2/student.txt.
+quit;
 ```
 
 其中test1.sql文件为：
 
 ```sql
+create table student (
+        sno char(8),
+        sname char(16) unique,
+        sage int,
+        sgender char (1),
+        score float,
+        primary key ( sno )
+);
+delete from student;
+insert into student values ('12345678', 'aaa',22,'M',95);
+insert into student values ('12345679', 'bbb',19,'F',100);
+create index stunameidx on student ( sname );
+insert into student values ('12345682', 'ccc',14,'M',60);
+insert into student values ('12345684', 'ddd',25,'F',63);
+select * from student;
+select * from student where sno = '12345679';
+select * from student where score >= 90 and score <=95;
+select * from student where score >= 60 and score <> 63;
+select * from student where score >= 98;
+select * from student where sage > 20 and sgender = 'F';
+delete from student where sno = '12345678';
+delete from student where sname = 'wy2';
+select * from student;
+insert into student values ('12345681', 'eee',23,'F',96);
+insert into student values ('12345670', 'fff',25,'M',0);
+select * from student where score < 10;
+select * from student where sgender <> 'F';
+drop index stunameidx on student;
+drop table student;
+quit;
 ```
 
 **测试结果表明Interpreter功能完备**
@@ -282,7 +318,7 @@ insert into student values ('12345678','wy',22,'M',96);
 
 - 选择语句 ：
 
-  参见下方execfile测试中test1.sql的结果
+  ![image-20210627085323605](./img/InterpreterTest13.png)
 
 - 插入记录语句 （由于插入可能执行很多次，故不显示被影响的行数，防止刷屏）：
 
@@ -298,9 +334,9 @@ insert into student values ('12345678','wy',22,'M',96);
 
 - 执行 SQL 脚本文件语句 ：
 
-  
+  ![image-20210627084742169](./img/InterpreterTest11.png)
 
-  
+  ![image-20210627084935899](./img/InterpreterTest12.png)
 
 ### Record Manager 模块
 
@@ -342,8 +378,42 @@ RecordAccessProxy getIterator(const Table &table);
 #### 实现细节
 
 * Record Manager 在构造函数中读取了磁盘中存下的表占用块信息，实现初始化。在析构函数中将表占用块信息写回，保证了数据安全性。由于表-块对应关系的数据频繁访问且可能跨 block，因此单独存储于文件中。
+
 * Record Manager 实现了单块无序多记录存储。Record Manager 借助 RecordAccessProxy 所提供的接口，可以遍历块上的所有可能的数据存储槽位，并调用接口来判断此处是否存有有效数据。在条件查询/删除的情境下，在判断有效性后，Record Manager还会进一步判断该记录是否满足条件。
+
 * RecordAccessProxy封装了低级块操作。RecordAccessProxy 可以根据 Catalog Manager 提供的记录长度信息，递增数据指针指向下一条记录。若修改过当前块，则对 block 置 dirty_ 位以通知 Buffer Manager 择机回写该块。 当指针即将指出当前 block 时，RecordAccessProxy 会查找下一有效 block，并且修改 block 指针、设置新块和旧块的 pin 状态。若已到达最后一块的结尾时，则会返回失败状态。可以通过 RAP 的接口来调用 Buffer Manager 来分配一个新的空闲块，以供插入。此外，RAP还提供了元组提取、块位置提取接口以供其他组件使用
+
+#### 模块测试
+
+Record Manager模块的功能单独测试并不能很好体现，因此选择在**关闭index manager**的情况下进行实际测试。
+
+- 重置数据库，插入10w数据，并退出：
+
+  ![image-20210627090307584](./img/RecordManagerTest1.png)
+
+- 重新打开程序，复合条件select其中一部分（区间查找）：
+
+  ![image-20210627090410770](./img/RecordManagerTest2.png)
+
+- 等值查找：
+
+  ![image-20210627091601229](./img/RecordManagerTest5.png)
+
+- 不等值查找：
+
+  ![image-20210627091830840](./img/RecordManagerTest6.png)
+
+- 无index条件下unique和primary key约束效果：
+
+  ![image-20210627090609414](./img/RecordManagerTest3.png)
+
+- 执行自定义测试1：
+
+  ![image-20210627084935899](./img/InterpreterTest12.png)
+
+- 使用hexdump查看Record Manager管理的块：
+
+  ![image-20210627091116520](./img/RecordManagerTest4.png)
 
 ## 程序展示
 
@@ -361,6 +431,9 @@ RecordAccessProxy getIterator(const Table &table);
 
 总之，在这个项目中学到了许多。
 
+### YANGRQ
+
+
 
 
 ### 林伟燊
@@ -370,6 +443,3 @@ RecordAccessProxy getIterator(const Table &table);
 在项目的一开始，我只知道整个 MiniSQL 的总体模块框架，由于自身代码能力有限且工程经验短缺，在一开始着手编写模块的时候十分迷茫，不知道如何下手。最终，在其他两位同学的帮助下终于有了比较清晰的概念和一个大体的实现方案。在这个过程中学习到了许多之前没有接触过的结构、编程方法和各类工具，学到许多。
 
 而在项目实现的过程中，除了自身模块的编写，还需要了解其他模块的各种接口的调用，提出自身的接口需求，编写恰当的接口以供外部调用。在这个过程中，一方面也让我学习到其他模块可以通过什么样的方式来实现，学习到更加高效的组织方式；另一方面也促使我进一步去熟悉整个数据库系统的架构，了解了数据库系统代码的底层实现。不过在编写的过程中，模块内部的实现方式还比较笨拙原始，没有考虑太多性能方面的问题，使得系统在索引建立上的操作要耗费相当长的时间，在这一点上我还需要进一步学习。
-
-
-

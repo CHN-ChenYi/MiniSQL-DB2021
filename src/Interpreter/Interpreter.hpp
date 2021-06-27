@@ -33,10 +33,6 @@ class Interpreter {
    */
   void setWorkdir(const std::filesystem::path &dir) { cur_dir = dir; }
 
-  void cleanAffected() { affected = 0; }
-  void addAffected(const size_t &cnt) { affected += cnt; }
-  void showAffected();
-
  private:
   static inline std::unordered_set<std::string_view> keywords = {
       "select", "insert",  "create", "drop",     "delete", "table", "index",
@@ -74,6 +70,10 @@ class Interpreter {
   std::filesystem::path cur_dir = "";
   size_t affected = 0;
 
+  void cleanAffected() { affected = 0; }
+  void addAffected(const size_t &cnt) { affected += cnt; }
+  void showAffected(size_t cnt);
+  void showAffected();
   void tokenToSqlValue(SqlValue &val, const Token &tok);
   SqlValue tokenToSqlValue(const Token &tok);
   Operator tokenToRelOp(const Token &tok);
