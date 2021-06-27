@@ -28,9 +28,8 @@ class CatalogManager {
    *
    * @param table_name the name of the table
    * @param attributes the attributes of the table
-   * @return true if successful
    */
-  bool CreateTable(
+  void CreateTable(
       const string &table_name,
       const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes);
 
@@ -42,7 +41,7 @@ class CatalogManager {
    * @param index_name the name of the index
    * @return true if successful
    */
-  bool CreateIndex(const string &table_name, const string &attribute_name,
+  void CreateIndex(const string &table_name, const string &attribute_name,
                    const string &index_name);
 
   /**
@@ -52,7 +51,7 @@ class CatalogManager {
    * @param index_name the name of the index
    * @return true if successful
    */
-  bool DropIndex(const string &table_name, const string &index_name);
+  void DropIndex(const string &table_name, const string &index_name);
 
   /**
    * @brief Fetch a table's catalog
