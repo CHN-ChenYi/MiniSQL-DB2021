@@ -317,8 +317,10 @@ void Interpreter::parseAttribute() {
     if (cur_tok.kind != TokenKind::Int ||
         (cur_tok.i < 0 || cur_tok.i >= Config::kMaxStringLength))
       throw syntax_error("invalid length of char");
+    size_t n = cur_tok.i / 16; /* padding size to 16 */
+    size_t r = cur_tok.i % 16;
     val_type = static_cast<SqlValueType>(SqlValueTypeBase::String) +
-               (unsigned)cur_tok.i;
+               (unsigned)(n + !!r) * 16;
     expect(")");
   } else {
     cerr << "expect a valid attribute type among " ANSI_COLOR_GREEN
@@ -520,6 +522,8 @@ void Interpreter::parseCreateIndex() {
   cout << "DEBUG: create an index on `" << table_name.sv << "."
        << indexed_column_name.sv << "` named `" << index_name.sv << "`" << endl;
 #endif
+
+  CreateIndex(string(table_name.sv), string(index_name.sv),  string(indexed_column_name.sv));
 }
 
 void Interpreter::parseDropTable() {
@@ -547,6 +551,8 @@ void Interpreter::parseDropIndex() {
 #ifdef _INTERPRETER_DEBUG
   cout << "DEBUG: drop a index named `" << index_name.sv << "`" << endl;
 #endif
+
+  DropIndex(string(table_name.sv), string(index_name.sv));
 }
 
 void Interpreter::parseExec() {
