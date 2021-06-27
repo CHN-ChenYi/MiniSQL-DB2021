@@ -34,7 +34,8 @@ const string kIndexFileName = CommonPathPrefix "Index.data";
 const string kCatalogFileName = CommonPathPrefix "Catalog.data";
 const int kMaxStringLength = 256;
 const int kBlockSize = 16 * 1024;
-const int kNodeCapacity = 15;  // 8 + ( 256 + 16 ) * ( 15 - 1 ) + 16 + 16
+const int kNodeCapacity = (kBlockSize - sizeof(size_t) - sizeof(Position) - sizeof(int)) 
+                                    / (kMaxBlockNum + sizeof(Position)) + 1; 
 #ifdef _DEBUG
 const int kMaxBlockNum = 10;
 #else
