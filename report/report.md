@@ -385,9 +385,11 @@ RecordAccessProxy getIterator(const Table &table);
 
 #### 模块测试
 
-Record Manager模块的功能单独测试并不能很好体现，因此选择在**关闭index manager**的情况下进行实际测试。
+Record Manager 模块的功能单独测试并不能很好体现，因此选择在**关闭 Index Manager** 的情况下进行实际测试。
 
-- 重置数据库，插入10w数据，并退出：
+**测试结果表明 Record Manager 功能完备**
+
+- 重置数据库，插入10w数据，并退出（关闭了index，因此工作较慢）：
 
   ![image-20210627090307584](./img/RecordManagerTest1.png)
 
@@ -407,7 +409,7 @@ Record Manager模块的功能单独测试并不能很好体现，因此选择在
 
   ![image-20210627090609414](./img/RecordManagerTest3.png)
 
-- 执行自定义测试1：
+- 执行自定义测试1（tests/test1.sql内容如上）：
 
   ![image-20210627084935899](./img/InterpreterTest12.png)
 
