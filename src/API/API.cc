@@ -9,7 +9,7 @@
 bool CreateTable(
     const string &table_name,
     const vector<tuple<string, SqlValueType, SpecialAttribute>> &attributes) {
-  if (!catalog_manager.CreateTable(table_name, attributes)) return false;
+  catalog_manager.CreateTable(table_name, attributes);
   if (!record_manager.createTable(catalog_manager.TableInfo(table_name)))
     return false;
   // Problem to be solved ↓↓↓
@@ -27,8 +27,7 @@ bool DropTable(const string &table_name) {
 
 bool CreateIndex(const string &table_name, const string &index_name,
                  const string &column) {
-  if (!catalog_manager.CreateIndex(table_name, column, index_name))
-    return false;
+  catalog_manager.CreateIndex(table_name, column, index_name);
   if (!index_manager.CreateIndex(catalog_manager.TableInfo(table_name),
                                  index_name, column))
     return false;
@@ -36,7 +35,7 @@ bool CreateIndex(const string &table_name, const string &index_name,
 }
 
 bool DropIndex(const string &table_name, const string &index_name) {
-  if (!catalog_manager.DropIndex(table_name, index_name)) return false;
+  catalog_manager.DropIndex(table_name, index_name);
   if (!index_manager.DropIndex(index_name)) return false;
   return true;
 }
