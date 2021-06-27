@@ -9,6 +9,7 @@
 #include "BufferManager.hpp"
 #include "CatalogManager.hpp"
 #include "DataStructure.hpp"
+#include "memcmp.hpp"
 
 using std::cerr;
 using std::endl;
@@ -206,7 +207,10 @@ bool RecordManager::checkAttributeUnique(const Table &table,
   do {
     if (!rap.isCurrentSlotValid()) continue;
     auto data = rap.getRawData();
-    if (memcmp(data + offset, v, len) == 0) return false;
+    if (len == 4) {
+      if (memcmp32(data + offset, v, 1) == 0) return false;
+    } else if (memcmp128(data + offset, v, len / 16) == 0)
+      return false;
   } while (rap.next());
   return true;
 }

@@ -8,9 +8,6 @@
 #include <tuple>
 #include <vector>
 
-#include "DataStructure.hpp"
-
-
 using std::ifstream;
 using std::map;
 using std::ofstream;
@@ -34,11 +31,12 @@ const string kIndexFileName = CommonPathPrefix "Index.data";
 const string kCatalogFileName = CommonPathPrefix "Catalog.data";
 const int kMaxStringLength = 256;
 const int kBlockSize = 16 * 1024;
-const int kNodeCapacity = (kBlockSize - sizeof(size_t) - 16 - 8) / (kMaxStringLength + 16) + 1; 
+const int kNodeCapacity =
+    (kBlockSize - sizeof(size_t) - 16 - 8) / (kMaxStringLength + 16) + 1;
 #ifdef _DEBUG
 const int kMaxBlockNum = 10;
 #else
-const int kMaxBlockNum = 256;
+const int kMaxBlockNum = 512;
 #endif
 }  // namespace Config
 
