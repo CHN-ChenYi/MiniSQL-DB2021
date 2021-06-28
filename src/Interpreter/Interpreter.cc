@@ -689,17 +689,17 @@ void Interpreter::parseDeleteStat() {
 void Interpreter::parseInsertStat() {
   bool not_changed;
   static Tuple tp;
-  static Token last_insert_table_name;
+  static string last_insert_table_name;
   const static Table *last_table;
   static vector<tuple<const char *, size_t, size_t>> need_unique;
   expect("insert"sv);
   expect("into"sv);
   parseId();
-  if (cur_tok.sv == last_insert_table_name.sv)
+  if (cur_tok.sv == last_insert_table_name)
     not_changed = true;
   else {
     not_changed = false;
-    last_insert_table_name = cur_tok;
+    last_insert_table_name = string(cur_tok.sv);
   }
   table_name = cur_tok;
   expect("values"sv);
