@@ -67,10 +67,6 @@ class CatalogManager {
    * @param table_name the name of the table
    */
   void DropTable(const string &table_name);
-
-  void PrintTables() const {
-    // TODO
-  }
 };
 
 extern CatalogManager catalog_manager;
