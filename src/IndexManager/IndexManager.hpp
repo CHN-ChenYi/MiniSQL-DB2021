@@ -1,5 +1,7 @@
 #pragma once
 
+//#define _indexDEBUG
+
 #include <iostream>
 #include <map>
 #include <unordered_map>
@@ -16,6 +18,7 @@ using std::unordered_map;
 
 #define NEWBLOCK Config::kMaxBlockNum + 5
 #define ROOT Config::kMaxBlockNum + 5
+#define NULLBLOCK Config::kMaxBlockNum + 5
 
 enum struct NodeType { Root, nonLeafNode, LeafNode };
 
@@ -66,7 +69,9 @@ struct bplusNode {
 
     size_t findLeaf(SqlValue val);
 
-    Tuple find(SqlValue val);
+    Position find(SqlValue val);
+
+    Position findMin();
 
     /**
      * @brief delete ONE key in the index at one time
@@ -77,6 +82,7 @@ struct bplusNode {
     void delete_entry(size_t N, SqlValue K);
 
     void deleteIndexRoot();
+
   };
 
 class IndexManager {
@@ -145,13 +151,29 @@ class IndexManager {
   bool RemoveKey(const Table &table, const Tuple &tuple);
 
   /**
+   * @brief check whether the index can be used in these conditions
+   * */
+  bool checkCondition(const Table &table, const vector<Condition> &condition);
+
+  bool judgeCondition(string attribute, const SqlValue& val, Condition& condition);
+
+  bool judgeConditions(const Table &table, Position pos , const vector<Condition>& conditions);
+
+  Position posNext(Position pos);
+
+  /**
+   * @brief get the record data at pos
+   * */
+  const Tuple extractData(const Table& table, const Position& pos);
+
+  /**
    * @brief Select specified records by an index
    *
    * @param index the name of the index
    * @param conditions the specified conditions (must be based on the index key)
    * @return selected records
    */
-  vector<Tuple> SelectRecord(const string &index,
+  vector<Tuple> SelectRecord(const Table &table,
                              const vector<Condition> &conditions);
 };
 

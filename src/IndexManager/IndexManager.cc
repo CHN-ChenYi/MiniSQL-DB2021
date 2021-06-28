@@ -20,8 +20,15 @@ getBplus::getBplus(size_t blk_id, SqlValueType p, string n)
       if (block_id_ == NEWBLOCK) {
         cur_blk_ = nullptr;
         data_ = nullptr;
+        #ifdef _indexDEBUG
+        cout << "get null Node" << endl;
+        #endif
         return;
       }
+      #ifdef _indexDEBUG
+    cout << "get node" << endl;
+    #endif
+      root_id = blk_id;
       cur_blk_ = static_cast<IndexBlock *>(buffer_manager.Read(block_id_));
       cur_blk_->pin_ = true;
       data_ = cur_blk_->val_;
@@ -31,6 +38,9 @@ getBplus::getBplus(size_t blk_id, SqlValueType p, string n)
 void getBplus::releaseBlock() { if(cur_blk_) cur_blk_->pin_ = false; }
 
 const bplusNode& getBplus::getNodeInfo() {
+    #ifdef _indexDEBUG
+    cout << "getting node info..." << endl;
+    #endif
     Node_.elem.clear();
     Node_.pos.clear();
     char *tmp = data_;
@@ -41,6 +51,9 @@ const bplusNode& getBplus::getNodeInfo() {
     memcpy(&pos, tmp, sizeof(pos));
     tmp += sizeof(pos);
     Node_.pos.push_back(pos);
+    #ifdef _indexDEBUG
+    cout << element_num << " " << Node_.pos[element_num].block_id << endl;
+    #endif
     if(element_num!=0){
     for (int i = 0; i < element_num; i++) {
         memcpy(&pos, tmp, sizeof(pos));
@@ -57,6 +70,9 @@ const bplusNode& getBplus::getNodeInfo() {
     memcpy(&Node_.parent, tmp, sizeof(Node_.parent));
     tmp += sizeof(Node_.parent);
     memcpy(&Node_.type, tmp, sizeof(Node_.type));
+    #ifdef _indexDEBUG
+    cout << "get info! " << Node_.pos[element_num].block_id << endl;
+    #endif
     return Node_;
 }
 
@@ -81,6 +97,9 @@ void getBplus::newNode(NodeType t) {
 }
 
 void getBplus::switchToBlock(size_t blk_id) {
+    #ifdef _indexDEBUG
+    cout << "block switching..." << endl;
+    #endif
     if (cur_blk_) {
     releaseBlock();
     }
@@ -115,38 +134,51 @@ void getBplus::updateBlock() {
  * the cur_block_ should be set to ROOT before insert()
  * */
 void getBplus::insert(SqlValue val, Position pos) {
+    #ifdef _indexDEBUG
+    cout << "start insert()" << endl;
+    #endif
     int maxElem = Config::kNodeCapacity - 1;
     // find the leafNode
     int i = 0;
     while (Node_.type != NodeType::LeafNode) {
     size_t Next_blk;
-    while (i < element_num - 1) {
+    while (i < element_num) {
         if (Node_.elem[i].Compare(Operator::GT, val)) break;
         i++;
     }
     Next_blk = Node_.pos[i].block_id;
     switchToBlock(Next_blk);
     }
+    #ifdef _indexDEBUG
+    cout << "reach the leaf" << endl;
+    #endif
     // reach the leafNode
     // find insert position
     for (i = 0; i < element_num; i++) {
     if (Node_.elem[i].Compare(Operator::GT, val)) break;
     }
     // insert into "Node_"
-    auto e = Node_.elem.begin();
-    Node_.elem.insert(e + i, val);
-    auto p = Node_.pos.begin();
-    Node_.pos.insert(p + i, pos);
+    Node_.elem.insert(Node_.elem.begin() + i, val);
+    Node_.pos.insert(Node_.pos.begin() + i, pos);
     element_num++;
 
     // insert into real Index
     if (element_num <= maxElem) {
     updateBlock();
+    #ifdef _indexDEBUG
+    cout << "insert without split" << endl;
+    #endif
     }
     // the leafnode needs to split
     else {
+    #ifdef _indexDEBUG
+    cout << "need to split" << endl;
+    #endif
     splitLeaf();
     }
+    #ifdef _indexDEBUG
+    cout << "insert new record, now root id: " << root_id << endl;
+    #endif
 }
 
 void getBplus::splitLeaf() {
@@ -172,7 +204,7 @@ void getBplus::splitLeaf() {
     blk_id_ = block_id_;
 
     updateBlock();
-    newNode(Node_.type);
+    newNode(temp_type);
     Node_.elem.insert(Node_.elem.begin(), temp_val.begin() + left_,
                     temp_val.end());
     Node_.pos.insert(Node_.pos.begin(), temp_pos.begin() + left_,
@@ -194,6 +226,9 @@ void getBplus::insert_in_parent(size_t old_id, size_t new_id, SqlValue k) {
     size_t blk_id_ = Node_.parent.block_id;
 
     if (blk_id_ == ROOT) {
+    #ifdef _indexDEBUG
+    cout << "need to create new root" << endl;
+    #endif
     newNode(NodeType::Root);
     Node_.pos.push_back(old_node);
     Node_.elem.push_back(k);
@@ -213,7 +248,8 @@ void getBplus::insert_in_parent(size_t old_id, size_t new_id, SqlValue k) {
     Node_.parent.block_id = blk_id_;
     if (Node_.type == NodeType::Root) Node_.type = NodeType::nonLeafNode;
     updateBlock();
-    } else {
+    } 
+    else {
     switchToBlock(blk_id_);
     int i;
     for (i = 0; i < element_num; i++) {
@@ -276,18 +312,31 @@ void getBplus::insert_in_parent(size_t old_id, size_t new_id, SqlValue k) {
 size_t getBplus::findLeaf(SqlValue val) {
     int i = 0;
     while (Node_.type != NodeType::LeafNode) {
+    #ifdef _indexDEBUG
+    cout << "not leafNode, get down" << endl;
+    #endif
     size_t Next_blk;
+    i = 0;
     while (i < element_num) {
+        #ifdef _indexDEBUG
+        cout << "current node: " << block_id_ << " " << Node_.elem[i].val.String << endl;
+        #endif
         if (Node_.elem[i].Compare(Operator::GT, val)) break;
         i++;
     }
-    Next_blk = Node_.pos[i].block_id;
+    #ifdef _indexDEBUG
+    cout << "reach Node: " << block_id_ << " " << Node_.elem[i].val.String << " " << Node_.pos[i].block_id << endl;
+    #endif
+    Next_blk = Node_.pos[i-1].block_id;
     switchToBlock(Next_blk);
     }
+    #ifdef _indexDEBUG
+    cout << "reach leaf: " << block_id_ << endl;
+    #endif
     return block_id_;
 }
 
-Tuple getBplus::find(SqlValue val){
+Position getBplus::find(SqlValue val){
     size_t leaf = findLeaf(val);
     switchToBlock(leaf);
     int i = 0;
@@ -295,12 +344,17 @@ Tuple getBplus::find(SqlValue val){
     if (Node_.elem[i].Compare(Operator::EQ, val)) break;
     i++;
     }
-    if (i == element_num){
-        
+    
+    return Node_.pos[i];
+}
+
+Position getBplus::findMin(){
+    size_t blk_id;
+    while(Node_.type!=NodeType::LeafNode){
+        blk_id = Node_.pos[0].block_id;
+        switchToBlock(blk_id);
     }
-    else
-    Position p = Node_.pos[i];
-    //unfinished
+    return Node_.pos[0];
 }
 
 /**
@@ -493,8 +547,6 @@ void getBplus::deleteIndexRoot() {
     return;
 }
 
-
-
 IndexManager::IndexManager(){
     std::ifstream is(Config::kIndexFileName, std::ios::binary);
     if (!is) {
@@ -541,20 +593,34 @@ IndexManager::~IndexManager(){
 
 bool IndexManager::CreateIndex(const Table &table, const string &index_name,
                  const string &column){
+    #ifdef _indexDEBUG
+    cout << "creating index..." << endl;
+    #endif
+
     if(get<2>(table.attributes.at(column)) == SpecialAttribute::None){
         cerr << "failed to build index: the attribute may not be unique" << endl;
         return true;
     }
     SqlValueType p = get<1>(table.attributes.at(column));
+    #ifdef _indexDEBUG
+    cout << "creating newNode..." << endl;
+    #endif
+    
     getBplus newTree(NEWBLOCK, p, index_name);
     newTree.newNode(NodeType::LeafNode);
     newTree.Node_.parent.block_id = ROOT;
-    newTree.root_id = newTree.block_id_;
-    Position temp = {ROOT, 0};
+    newTree.root_id = newTree.block_id_;   //new Tree, new id, new block
+    Position temp = {NULLBLOCK, 0};
     newTree.Node_.pos.push_back(temp);
     newTree.updateBlock();
-    index_blocks.insert({index_name, newTree.block_id_});
+    index_blocks.insert({index_name, newTree.root_id});
+    #ifdef _indexDEBUG
+    cout << "new block id: " << newTree.block_id_ << endl;
+    #endif
     
+    #ifdef _indexDEBUG
+    cout << "inserting formal element..." << endl;
+    #endif
     //not finished yet
     size_t idx = get<0>(table.attributes.at(column));
     size_t root_id;
@@ -562,15 +628,25 @@ bool IndexManager::CreateIndex(const Table &table, const string &index_name,
     Position pos;
     RecordAccessProxy rap = record_manager.getIterator(table);
     do{
-        if(!rap.isCurrentSlotValid()) break;
+        if(!rap.isCurrentSlotValid()) continue;
+        #ifdef _indexDEBUG
+        cout << "get into loop" << endl;
+        #endif
         data = rap.extractData().values[idx];
         pos = rap.extractPostion();
         newTree.insert(data, pos);
+        //attention: there might be something wrong blow
         index_blocks[column] = newTree.root_id;
         root_id = index_blocks[column];
         if(newTree.block_id_ != root_id) newTree.switchToBlock(root_id);
+        #ifdef _indexDEBUG
+        cout << "end of one loop" << endl;
+        #endif
     } while(rap.next());
     newTree.releaseBlock();
+    #ifdef _indexDEBUG
+    cout << "finish create index" << endl;
+    #endif
 
     return true;
 }
@@ -612,15 +688,21 @@ void IndexManager::DropAllIndex(const Table &table){
 bool IndexManager::InsertKey(const Table &table,
                  const Tuple &tuple,
                  Position &pos){
-    //
+    #ifdef _indexDEBUG
+    cout << "starting insert..." << endl;
+    #endif
     for(const auto &v : table.indexes){
         auto &attribute_name = v.first;
         auto &index_name = v.second;
         auto &block_id = index_blocks[index_name];
         auto &attribute_index = get<0>(table.attributes.at(attribute_name));
         auto &attribute_type = get<1>(table.attributes.at(attribute_name));
+        #ifdef _indexDEBUG
+        cout << "insert into: " << attribute_name << index_name << block_id << attribute_index << attribute_type << endl;
+        #endif
         getBplus current(block_id, attribute_type, index_name);
         current.insert(tuple.values[attribute_index], pos);
+        index_blocks[index_name] = current.root_id;
         current.releaseBlock();
     }
     return true;
@@ -642,10 +724,227 @@ bool IndexManager::RemoveKey(const Table &table,
     return true;
 }
 
-vector<Tuple> IndexManager::SelectRecord(const string &index,
+bool IndexManager::checkCondition(const Table &table, const vector<Condition> &condition){
+    #ifdef _indexDEBUG
+    cout << "check Condition" << endl;
+    #endif
+    for(auto &v : condition){
+        if(table.indexes.contains(v.attribute)) return true;
+    }
+    return false;
+}
+
+bool IndexManager::judgeCondition(string attribute, const SqlValue& val, Condition& condition){
+    if(condition.attribute!=attribute) return false;
+    return val.Compare(condition.op, condition.val);
+}
+
+bool IndexManager::judgeConditions(const Table &table, Position pos , const vector<Condition>& conditions){
+    #ifdef _indexDEBUG
+    cout << "judging conditions" << endl;
+    #endif
+    Tuple tuple_ = extractData(table, pos);
+    for(int i=0; i<conditions.size();i++){
+        size_t idx = get<0>(table.attributes.at(conditions[i].attribute));
+        SqlValue comp = {tuple_.values[idx].type, conditions[i].val.val};
+        if(!tuple_.values[idx].Compare(conditions[i].op, comp)) {
+            #ifdef _indexDEBUG
+            cout << "false" << endl;
+            #endif
+            return false;}
+    }
+    #ifdef _indexDEBUG
+    cout << "true" << endl;
+    #endif
+    return true;
+}
+
+
+const Tuple IndexManager::extractData(const Table& table, const Position& pos){
+    #ifdef _indexDEBUG
+    cout << "extracting data: " << pos.block_id << " " << pos.offset << endl;
+    #endif
+  Block* blk = buffer_manager.Read(pos.block_id);
+    #ifdef _indexDEBUG
+    cout << "reach the block"  << endl;
+    #endif
+  char *data = blk->val_ + pos.offset;
+  char *tmp = data;
+  int size = table.attributes.size();
+  #ifdef _indexDEBUG
+    cout << "attribute number: " << size << endl;
+    #endif
+  Tuple tuple_;
+  SqlValue t;
+  for (auto &v : table.attributes) {
+    switch (get<1>(v.second)) {
+      case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
+        #ifdef _indexDEBUG
+        cout << "type : integer " << endl;
+        #endif
+        memcpy(&t.val.Integer, tmp, sizeof(t.val.Integer));
+        t.type = static_cast<SqlValueType>(SqlValueTypeBase::Integer);
+        #ifdef _indexDEBUG
+        cout << t.val.Integer << endl;
+        #endif
+        tuple_.values.push_back(t);
+        tmp += sizeof(t.val.Integer);
+        break;
+      case static_cast<SqlValueType>(SqlValueTypeBase::Float):
+        #ifdef _indexDEBUG
+        cout << "type : float " << endl;
+        #endif
+        memcpy(&t.val.Float, tmp, sizeof(t.val.Float));
+        t.type = static_cast<SqlValueType>(SqlValueTypeBase::Float);
+        #ifdef _indexDEBUG
+        cout << setprecision(2) << setiosflags(ios::fixed) << t.val.Float << endl;
+        #endif
+        tuple_.values.push_back(t);
+        tmp += sizeof(t.val.Float);
+        break;
+      default: {
+        size_t len =
+            get<1>(v.second) - static_cast<SqlValueType>(SqlValueTypeBase::String);
+            #ifdef _indexDEBUG
+        cout << "type : string " << endl;
+        #endif
+        memcpy(t.val.String, tmp, len);
+        t.type = static_cast<SqlValueType>(len);
+        #ifdef _indexDEBUG
+        cout << t.val.String << endl;
+        #endif
+        tuple_.values.push_back(t);
+        tmp += len;
+        break;
+      }
+    }
+  }
+    #ifdef _indexDEBUG
+    cout << "obtain data!" << endl;
+    #endif
+  return tuple_;
+}
+
+vector<Tuple> IndexManager::SelectRecord(const Table &table,
                              const vector<Condition> &conditions) {
+    #ifdef _indexDEBUG
+    cout << "start selecting..." << endl;
+    #endif
     vector<Tuple> res;
-    //
+    vector<Condition> good;
+    int i;
+    #ifdef _indexDEBUG
+    cout << "searching good conditions" << endl;
+    #endif
+    for(i; i<conditions.size();i++){
+        if(index_blocks.contains(conditions[i].attribute)){
+            good.push_back(conditions[i]);
+        }
+    }
+    Condition perfect = good[0];
+    #ifdef _indexDEBUG
+    cout << "searching perfect condition" << endl;
+    #endif
+    for(i; i<good.size();i++){
+        if(good[i].op == Operator::EQ) {
+            perfect = good[i]; 
+            break;
+        }
+        if(good[i].op < perfect.op) perfect = good[i];
+    }
+    #ifdef _indexDEBUG
+    cout << "find perfect: " << perfect.val.val.String << endl;
+    #endif
+    getBplus index(index_blocks[perfect.attribute], perfect.val.type, table.indexes.at(perfect.attribute));
+    index.getNodeInfo();
+    index.findLeaf(perfect.val);
+    size_t blk = index.block_id_;
+    int offset;
+    for(offset=0;offset<index.element_num;offset++){
+        #ifdef _indexDEBUG
+        cout << "compare: " << index.Node_.elem[offset].val.String << endl;
+        #endif
+        if(index.Node_.elem[offset].Compare(Operator::EQ, perfect.val)) break;
+    }
+    switch(perfect.op){
+        case Operator::EQ : {
+            #ifdef _indexDEBUG
+            cout << "get equal condition" << endl;
+            #endif
+            if(judgeConditions(table, index.Node_.pos[offset], conditions))
+            res.push_back(extractData(table, index.Node_.pos[offset])); 
+            break;}
+        case Operator::GT : {
+            do{
+                index.switchToBlock(blk);
+                for(offset=0;offset<index.element_num;offset++){
+                    if(judgeConditions(table, index.Node_.pos[offset], conditions))
+                    res.push_back(extractData(table, index.Node_.pos[offset])); 
+                }
+                blk = index.Node_.pos[offset].block_id;
+            }while(blk != ROOT);
+        }
+        case Operator::GE : {
+            do{
+                index.switchToBlock(blk);
+                for(offset=0;offset<index.element_num;offset++){
+                    if(judgeConditions(table, index.Node_.pos[offset], conditions))
+                    res.push_back(extractData(table, index.Node_.pos[offset])); 
+                }
+                blk = index.Node_.pos[offset].block_id;
+            }while(blk != ROOT);
+        }
+        case Operator::LE : {
+            index.findMin();
+            size_t cur = index.block_id_;
+            do{
+                index.switchToBlock(cur);
+                for(offset=0;offset<index.element_num;offset++){
+                    if(judgeConditions(table, index.Node_.pos[offset], conditions))
+                    res.push_back(extractData(table, index.Node_.pos[offset])); 
+                }
+                cur = index.Node_.pos[offset].block_id;
+            }while(cur != blk);
+                index.switchToBlock(cur);
+                for(offset=0;offset<index.element_num;offset++){
+                    if(judgeConditions(table, index.Node_.pos[offset], conditions))
+                    res.push_back(extractData(table, index.Node_.pos[offset])); 
+                }
+        }
+        case Operator::LT : {
+            index.findMin();
+            size_t cur = index.block_id_;
+            do{
+                index.switchToBlock(cur);
+                for(offset=0;offset<index.element_num;offset++){
+                    if(judgeConditions(table, index.Node_.pos[offset], conditions))
+                    res.push_back(extractData(table, index.Node_.pos[offset])); 
+                }
+                cur = index.Node_.pos[offset].block_id;
+            }while(cur != blk);
+                index.switchToBlock(cur);
+                for(offset=0;offset<index.element_num;offset++){
+                    if(judgeConditions(table, index.Node_.pos[offset], conditions))
+                    res.push_back(extractData(table, index.Node_.pos[offset])); 
+                }
+        }
+        case Operator::NE : {
+            index.findMin();
+            size_t cur = index.block_id_;
+            do{
+                index.switchToBlock(cur);
+                for(offset=0;offset<index.element_num;offset++){
+                    if(judgeConditions(table, index.Node_.pos[offset], conditions))
+                    res.push_back(extractData(table, index.Node_.pos[offset])); 
+                }
+                cur = index.Node_.pos[offset].block_id;
+            }while(cur != ROOT);
+        }
+    }
+    #ifdef _indexDEBUG
+    cout << "returning selecting result   " << res[0].values[1].val.String << endl;
+    cout << (res[0].values[1].type == static_cast<SqlValueType>(SqlValueTypeBase::String)) << endl;
+    #endif
     return res;
 }
 

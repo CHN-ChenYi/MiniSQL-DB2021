@@ -12,8 +12,6 @@ bool CreateTable(
   catalog_manager.CreateTable(table_name, attributes);
   if (!record_manager.createTable(catalog_manager.TableInfo(table_name)))
     return false;
-  // Problem to be solved ↓↓↓
-  // PrimaryKeyIndex won't call catalog_manager.CreateIndex
   if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
     return false;
 }
@@ -21,6 +19,7 @@ bool CreateTable(
 bool DropTable(const string &table_name) {
   if (!record_manager.dropTable(catalog_manager.TableInfo(table_name)))
     return false;
+  index_manager.DropAllIndex(catalog_manager.TableInfo(table_name));
   catalog_manager.DropTable(table_name);
   return true;
 }
@@ -46,6 +45,8 @@ vector<Tuple> Select(const string &table_name,
   if (conditions.empty())
     res =
         record_manager.selectAllRecords(catalog_manager.TableInfo(table_name));
+  else if (index_manager.checkCondition(catalog_manager.TableInfo(table_name), conditions))
+    res = index_manager.SelectRecord(catalog_manager.TableInfo(table_name), conditions);  
   else
     res = record_manager.selectRecord(catalog_manager.TableInfo(table_name),
                                       conditions);
