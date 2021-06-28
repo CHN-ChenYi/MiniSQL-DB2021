@@ -12,8 +12,8 @@ bool CreateTable(
   catalog_manager.CreateTable(table_name, attributes);
   if (!record_manager.createTable(catalog_manager.TableInfo(table_name)))
     return false;
-  if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
-    return false;
+  // if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
+  // return false;
 }
 
 bool DropTable(const string &table_name) {
@@ -45,8 +45,10 @@ vector<Tuple> Select(const string &table_name,
   if (conditions.empty())
     res =
         record_manager.selectAllRecords(catalog_manager.TableInfo(table_name));
-  else if (index_manager.checkCondition(catalog_manager.TableInfo(table_name), conditions))
-    res = index_manager.SelectRecord(catalog_manager.TableInfo(table_name), conditions);  
+  else if (index_manager.checkCondition(catalog_manager.TableInfo(table_name),
+                                        conditions))
+    res = index_manager.SelectRecord(catalog_manager.TableInfo(table_name),
+                                     conditions);
   else
     res = record_manager.selectRecord(catalog_manager.TableInfo(table_name),
                                       conditions);
