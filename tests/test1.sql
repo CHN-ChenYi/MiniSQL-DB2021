@@ -1,11 +1,4 @@
-create table student (
-        sno char(8),
-        sname char(16) unique,
-        sage int,
-        sgender char (1),
-        score float,
-        primary key ( sno )
-);
+create table student (sno char(8), sname char(16) unique, sage int, sgender char (1), score float, primary key ( sno ));
 delete from student;
 insert into student values ('12345678', 'aaa',22,'M',95);
 insert into student values ('12345679', 'bbb',19,'F',100);
@@ -19,7 +12,7 @@ select * from student where score >= 60 and score <> 63;
 select * from student where score >= 98;
 select * from student where sage > 20 and sgender = 'F';
 delete from student where sno = '12345678';
-delete from student where sname = 'wy2';
+delete from student where sname = 'bbb';
 select * from student;
 insert into student values ('12345681', 'eee',23,'F',96);
 insert into student values ('12345670', 'fff',25,'M',0);
