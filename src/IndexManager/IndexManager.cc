@@ -883,6 +883,7 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
                 }
                 blk = index.Node_.pos[offset].block_id;
             }while(blk != ROOT);
+            break;
         }
         case Operator::GE : {
             do{
@@ -893,6 +894,7 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
                 }
                 blk = index.Node_.pos[offset].block_id;
             }while(blk != ROOT);
+            break;
         }
         case Operator::LE : {
             index.findMin();
@@ -910,6 +912,7 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
                     if(judgeConditions(table, index.Node_.pos[offset], conditions))
                     res.push_back(extractData(table, index.Node_.pos[offset])); 
                 }
+            break;
         }
         case Operator::LT : {
             index.findMin();
@@ -927,6 +930,7 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
                     if(judgeConditions(table, index.Node_.pos[offset], conditions))
                     res.push_back(extractData(table, index.Node_.pos[offset])); 
                 }
+            break;
         }
         case Operator::NE : {
             index.findMin();
@@ -939,6 +943,7 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
                 }
                 cur = index.Node_.pos[offset].block_id;
             }while(cur != ROOT);
+            break;
         }
     }
     #ifdef _indexDEBUG

@@ -3,6 +3,7 @@
 //#define _indexDEBUG
 
 #include <iostream>
+#include <limits>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -11,14 +12,14 @@
 #include "CatalogManager.hpp"
 #include "DataStructure.hpp"
 
-using std::cout;
 using std::cerr;
+using std::cout;
 using std::endl;
 using std::unordered_map;
 
-#define NEWBLOCK Config::kMaxBlockNum + 5
-#define ROOT Config::kMaxBlockNum + 5
-#define NULLBLOCK Config::kMaxBlockNum + 5
+#define NEWBLOCK std::numeric_limits<size_t>::max()
+#define ROOT std::numeric_limits<size_t>::max()
+#define NULLBLOCK std::numeric_limits<size_t>::max()
 
 enum struct NodeType { Root, nonLeafNode, LeafNode };
 
@@ -31,59 +32,57 @@ struct bplusNode {
   NodeType type;
 };
 
-  struct getBplus {
-    size_t block_id_;
-    int element_num;
-    struct bplusNode Node_;
-    char *data_;
-    IndexBlock *cur_blk_;
-    SqlValueType value_type_;
-    string index_name;
-    size_t root_id;
+struct getBplus {
+  size_t block_id_;
+  int element_num;
+  struct bplusNode Node_;
+  char *data_;
+  IndexBlock *cur_blk_;
+  SqlValueType value_type_;
+  string index_name;
+  size_t root_id;
 
-    getBplus(size_t blk_id, SqlValueType p, string n);
+  getBplus(size_t blk_id, SqlValueType p, string n);
 
-    void releaseBlock();
+  void releaseBlock();
 
-    const bplusNode &getNodeInfo();
+  const bplusNode &getNodeInfo();
 
-    void newNode(NodeType t);
+  void newNode(NodeType t);
 
-    void switchToBlock(size_t blk_id);
+  void switchToBlock(size_t blk_id);
 
-    void updateBlock();
+  void updateBlock();
 
+  /**
+   * @brief insert ONE value into index
+   * the cur_block_ should be set to ROOT before insert()
+   * */
+  void insert(SqlValue val, Position pos);
 
-    /**
-     * @brief insert ONE value into index
-     * the cur_block_ should be set to ROOT before insert()
-     * */
-    void insert(SqlValue val, Position pos);
+  void splitLeaf();
 
-    void splitLeaf();
+  /**
+   * the cur_Node_ should be set to newNode
+   * */
+  void insert_in_parent(size_t old_id, size_t new_id, SqlValue k);
 
-    /**
-     * the cur_Node_ should be set to newNode
-     * */
-    void insert_in_parent(size_t old_id, size_t new_id, SqlValue k);
+  size_t findLeaf(SqlValue val);
 
-    size_t findLeaf(SqlValue val);
+  Position find(SqlValue val);
 
-    Position find(SqlValue val);
+  Position findMin();
 
-    Position findMin();
+  /**
+   * @brief delete ONE key in the index at one time
+   * please set cur_blk_ to the rootNode before erase
+   * */
+  void erase(SqlValue val);
 
-    /**
-     * @brief delete ONE key in the index at one time
-     * please set cur_blk_ to the rootNode before erase
-     * */
-    void erase(SqlValue val);
+  void delete_entry(size_t N, SqlValue K);
 
-    void delete_entry(size_t N, SqlValue K);
-
-    void deleteIndexRoot();
-
-  };
+  void deleteIndexRoot();
+};
 
 class IndexManager {
   unordered_map<std::string, size_t> index_blocks;
@@ -155,16 +154,18 @@ class IndexManager {
    * */
   bool checkCondition(const Table &table, const vector<Condition> &condition);
 
-  bool judgeCondition(string attribute, const SqlValue& val, Condition& condition);
+  bool judgeCondition(string attribute, const SqlValue &val,
+                      Condition &condition);
 
-  bool judgeConditions(const Table &table, Position pos , const vector<Condition>& conditions);
+  bool judgeConditions(const Table &table, Position pos,
+                       const vector<Condition> &conditions);
 
   Position posNext(Position pos);
 
   /**
    * @brief get the record data at pos
    * */
-  const Tuple extractData(const Table& table, const Position& pos);
+  const Tuple extractData(const Table &table, const Position &pos);
 
   /**
    * @brief Select specified records by an index
