@@ -8,9 +8,9 @@ using std::unordered_map;
 struct CatalogBlock : public Block {};
 
 class CatalogManager {
-  unordered_map<string, Table> tables_;
-
  public:
+   unordered_map<string, Table> tables_;
+
   /**
    * @brief Construct a new Catalog Manager object. Open the file.
    *
