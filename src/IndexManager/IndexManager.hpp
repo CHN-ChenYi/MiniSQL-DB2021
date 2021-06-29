@@ -123,7 +123,7 @@ class IndexManager {
    * @param table the table with the index to be droped
    * @param index_name the name of the index to be deleted
    */
-  bool DropIndex(const string &index_name);
+  bool DropIndex(const Table &table, const string &index_name);
 
   /**
    * @brief delete all the indexes in a table
