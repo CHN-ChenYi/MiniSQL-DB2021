@@ -103,92 +103,59 @@ bool IndexManager::checkCondition(const Table &table,
 
 vector<Tuple> IndexManager::SelectRecord(const Table &table,
                                          const vector<Condition> &conditions) {
+  vector<Position> ret;
   for (const auto &c : conditions) {
     if (!(table.indexes.contains(c.attribute) && c.op != Operator::NE))
       continue;
-    vector<Tuple> ret;
     switch (c.op) {
       case Operator::EQ: {
         auto index_name = table.indexes.at(c.attribute);
         auto s = idx[make_tuple(table.table_name, index_name)];
-        if (s.contains(c.val)) ret.push_back(extractData(table, s[c.val]));
-        return ret;
+        if (s.contains(c.val)) ret.push_back(s[c.val]);
+        break;
       }
       case Operator::GT: {
         auto index_name = table.indexes.at(c.attribute);
         auto s = idx[make_tuple(table.table_name, index_name)];
         auto it = s.upper_bound(c.val);
         while (it != s.end()) {
-          ret.push_back(extractData(table, it->second));
+          ret.push_back(it->second);
           it++;
         }
-        return ret;
+        break;
       }
       case Operator::GE: {
         auto index_name = table.indexes.at(c.attribute);
         auto s = idx[make_tuple(table.table_name, index_name)];
         auto it = s.lower_bound(c.val);
         while (it != s.end()) {
-          ret.push_back(extractData(table, it->second));
+          ret.push_back(it->second);
           it++;
         }
-        return ret;
+        break;
       }
       case Operator::LT: {
         auto index_name = table.indexes.at(c.attribute);
         auto s = idx[make_tuple(table.table_name, index_name)];
         for (auto &it : s) {
           if (c.val == it.first || c.val < it.first) break;
-          ret.push_back(extractData(table, it.second));
+          ret.push_back(it.second);
         }
-        return ret;
+        break;
       }
       case Operator::LE: {
         auto index_name = table.indexes.at(c.attribute);
         auto s = idx[make_tuple(table.table_name, index_name)];
         for (auto &it : s) {
           if (c.val < it.first) break;
-          ret.push_back(extractData(table, it.second));
+          ret.push_back(it.second);
         }
-        return ret;
+        break;
       }
       default:
-        return ret;
+        break;
     }
+    break;
   }
-}
-
-const Tuple IndexManager::extractData(const Table &table, const Position &pos) {
-  Block *blk = buffer_manager.Read(pos.block_id);
-  char *data = blk->val_ + pos.offset;
-  char *tmp = data;
-  int size = table.attributes.size();
-  Tuple tuple_;
-  SqlValue t;
-  for (auto &v : table.attributes) {
-    switch (get<1>(v.second)) {
-      case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
-        memcpy(&t.val.Integer, tmp, sizeof(t.val.Integer));
-        t.type = static_cast<SqlValueType>(SqlValueTypeBase::Integer);
-        tuple_.values.push_back(t);
-        tmp += sizeof(t.val.Integer);
-        break;
-      case static_cast<SqlValueType>(SqlValueTypeBase::Float):
-        memcpy(&t.val.Float, tmp, sizeof(t.val.Float));
-        t.type = static_cast<SqlValueType>(SqlValueTypeBase::Float);
-        tuple_.values.push_back(t);
-        tmp += sizeof(t.val.Float);
-        break;
-      default: {
-        size_t len = get<1>(v.second) -
-                     static_cast<SqlValueType>(SqlValueTypeBase::String);
-        memcpy(t.val.String, tmp, len);
-        t.type = static_cast<SqlValueType>(len);
-        tuple_.values.push_back(t);
-        tmp += len;
-        break;
-      }
-    }
-  }
-  return tuple_;
+  return record_manager.selectRecordFromPosition(table, ret, conditions);
 }
