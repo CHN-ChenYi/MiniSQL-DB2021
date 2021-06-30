@@ -547,6 +547,8 @@ void getBplus::deleteIndexRoot() {
     return;
 }
 
+void IndexManager::Init() {}
+
 IndexManager::IndexManager(){
     std::ifstream is(Config::kIndexFileName, std::ios::binary);
     if (!is) {
@@ -667,7 +669,7 @@ bool IndexManager::PrimaryKeyIndex(const Table &table){
 }
 
 
-bool IndexManager::DropIndex(const string &index_name){
+bool IndexManager::DropIndex(const Table &table, const string &index_name){
     auto &block_id = index_blocks.at(index_name);
     getBplus byebye(block_id, 0, index_name);
     byebye.deleteIndexRoot();
@@ -681,7 +683,7 @@ void IndexManager::DropAllIndex(const Table &table){
     for(const auto &v : table.indexes){
         auto &attribute_name = v.first;
         auto &index_name = v.second;
-        DropIndex(index_name);        
+        DropIndex(table, index_name);        
     }
 }
 
