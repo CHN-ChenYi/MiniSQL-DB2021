@@ -91,6 +91,10 @@ class IndexManager {
   /**
    * @brief Construct a new Index Manager object. Open the file.
    */
+  void Init();
+  /**
+   * @brief Construct a new Index Manager object. Open the file.
+   */
   IndexManager();
 
   /**

@@ -8,6 +8,7 @@
 
 #include "BufferManager.hpp"
 #include "CatalogManager.hpp"
+#include "IndexManager.hpp"
 #include "DataStructure.hpp"
 #include "memcmp.hpp"
 
@@ -200,6 +201,7 @@ RecordManager::RecordManager() {
     }
     table_blocks[table_name] = blks;
   }
+  index_manager.Init();
 }
 
 RecordManager::~RecordManager() {

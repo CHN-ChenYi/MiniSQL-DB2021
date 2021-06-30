@@ -10,7 +10,7 @@ using std::make_tuple;
 static map<tuple<string, string>, std::map<SqlValue, Position>> idx;
 IndexManager index_manager;
 
-IndexManager::IndexManager() {
+void IndexManager::Init() {
   auto is = catalog_manager.tables_.begin();
   if (is == catalog_manager.tables_.end()) {
     std::cerr << "Couldn't find the Index file, assuming it is the first "
@@ -24,6 +24,8 @@ IndexManager::IndexManager() {
     is++;
   }
 }
+
+IndexManager::IndexManager() {}
 
 IndexManager::~IndexManager() {}
 
@@ -45,7 +47,7 @@ bool IndexManager::CreateIndex(const Table &table, const string &index_name,
 bool IndexManager::PrimaryKeyIndex(const Table &table) {
   auto it = table.attributes.begin();
   while (it != table.attributes.end()) {
-    auto &c = *it;
+    const auto &c = *it;
     if (get<2>(c.second) == SpecialAttribute::PrimaryKey) break;
     ++it;
   }
@@ -60,7 +62,7 @@ bool IndexManager::PrimaryKeyIndex(const Table &table) {
 
 void IndexManager::DropAllIndex(const Table &table) {
   for (const auto &v : table.indexes) {
-    auto &index_name = v.second;
+    const auto &index_name = v.second;
     DropIndex(table, index_name);
   }
 }
@@ -104,20 +106,22 @@ bool IndexManager::checkCondition(const Table &table,
 
 vector<Tuple> IndexManager::SelectRecord(const Table &table,
                                          const vector<Condition> &conditions) {
+  std::cerr << "What" << std::endl;
   vector<Position> ret;
   for (const auto &c : conditions) {
     if (!(table.indexes.contains(c.attribute) && c.op != Operator::NE))
       continue;
     switch (c.op) {
       case Operator::EQ: {
-        auto index_name = table.indexes.at(c.attribute);
-        auto s = idx[make_tuple(table.table_name, index_name)];
-        if (s.contains(c.val)) ret.push_back(s[c.val]);
+        const auto &index_name = table.indexes.at(c.attribute);
+        const auto &s = idx[make_tuple(table.table_name, index_name)];
+        const auto &it = s.find(c.val);
+        if (it != s.end()) ret.push_back(it->second);
         break;
       }
       case Operator::GT: {
-        auto index_name = table.indexes.at(c.attribute);
-        auto s = idx[make_tuple(table.table_name, index_name)];
+        const auto &index_name = table.indexes.at(c.attribute);
+        const auto &s = idx[make_tuple(table.table_name, index_name)];
         auto it = s.upper_bound(c.val);
         while (it != s.end()) {
           ret.push_back(it->second);
@@ -126,8 +130,8 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
         break;
       }
       case Operator::GE: {
-        auto index_name = table.indexes.at(c.attribute);
-        auto s = idx[make_tuple(table.table_name, index_name)];
+        const auto &index_name = table.indexes.at(c.attribute);
+        const auto &s = idx[make_tuple(table.table_name, index_name)];
         auto it = s.lower_bound(c.val);
         while (it != s.end()) {
           ret.push_back(it->second);
@@ -136,8 +140,8 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
         break;
       }
       case Operator::LT: {
-        auto index_name = table.indexes.at(c.attribute);
-        auto s = idx[make_tuple(table.table_name, index_name)];
+        const auto &index_name = table.indexes.at(c.attribute);
+        const auto &s = idx[make_tuple(table.table_name, index_name)];
         for (auto &it : s) {
           if (c.val == it.first || c.val < it.first) break;
           ret.push_back(it.second);
@@ -145,8 +149,8 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
         break;
       }
       case Operator::LE: {
-        auto index_name = table.indexes.at(c.attribute);
-        auto s = idx[make_tuple(table.table_name, index_name)];
+        const auto &index_name = table.indexes.at(c.attribute);
+        const auto &s = idx[make_tuple(table.table_name, index_name)];
         for (auto &it : s) {
           if (c.val < it.first) break;
           ret.push_back(it.second);
