@@ -108,7 +108,6 @@ const Tuple &RecordAccessProxy::extractData() {
 }
 
 const Tuple &RecordAccessProxy::extractData(const char *data, Tuple &tuple) {
-  assert(isCurrentSlotValid());
   const char *tmp = data + 1;
   for (auto &v : tuple.values) {
     switch (v.type) {
