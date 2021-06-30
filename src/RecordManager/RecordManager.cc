@@ -456,8 +456,8 @@ vector<Tuple> RecordManager::selectRecordFromPosition(
   auto conds_ = convertConditions(table, conds);
   for (auto &p : pos) {
     auto data = buffer_manager.Read(p.block_id)->val_ + p.offset;
-    if (checkRecordSatisfyCondition(conds_, data + 1 /* skip tag byte */))
-      res.push_back(RecordAccessProxy::extractData(data, tmp));
+    if (checkRecordSatisfyCondition(conds_, data))
+      res.push_back(RecordAccessProxy::extractData(data - 1, tmp));
   }
   return res;
 }
