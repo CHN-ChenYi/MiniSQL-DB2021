@@ -11,7 +11,7 @@ static map<tuple<string, string>, std::map<SqlValue, Position>> idx;
 IndexManager index_manager;
 
 IndexManager::IndexManager() {
-  const auto &is = catalog_manager.tables_.begin();
+  auto is = catalog_manager.tables_.begin();
   if (is == catalog_manager.tables_.end()) {
     std::cerr << "Couldn't find the Index file, assuming it is the first "
                  "time of running MiniSQL."
@@ -21,6 +21,7 @@ IndexManager::IndexManager() {
   while (is != catalog_manager.tables_.end()) {
     for (const auto &it : is->second.indexes)
       CreateIndex(is->second, it.second, it.first);
+    is++;
   }
 }
 
