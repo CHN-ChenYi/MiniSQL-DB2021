@@ -53,8 +53,8 @@ void CatalogManager::CreateTable(
       default:
         offset += type - static_cast<size_t>(SqlValueTypeBase::String);
     }
-    // if (special_attribute == SpecialAttribute::PrimaryKey)
-    //   table.indexes[attribute_name] = attribute_name;
+    if (special_attribute == SpecialAttribute::PrimaryKey)
+      table.indexes[attribute_name] = attribute_name;
   }
   tables_[table_name] = table;
 }
@@ -98,11 +98,11 @@ void CatalogManager::DropIndex(const string &table_name,
   auto &table = tables_[table_name];
   for (const auto &index : table.indexes) {
     if (index.second == index_name) {
-      // if (std::get<2>(table.attributes[index.first]) ==
-      //     SpecialAttribute::PrimaryKey) {
-      //   std::cerr << "can't drop primary key index" << std::endl;
-      //   throw invalid_ident("drop primary key index");
-      // }
+      if (std::get<2>(table.attributes[index.first]) ==
+          SpecialAttribute::PrimaryKey) {
+        std::cerr << "can't drop primary key index" << std::endl;
+        throw invalid_ident("drop primary key index");
+      }
       table.indexes.erase(index.first);
       return;
     }
