@@ -106,7 +106,6 @@ bool IndexManager::checkCondition(const Table &table,
 
 vector<Tuple> IndexManager::SelectRecord(const Table &table,
                                          const vector<Condition> &conditions) {
-  std::cerr << "What" << std::endl;
   vector<Position> ret;
   for (const auto &c : conditions) {
     if (!(table.indexes.contains(c.attribute) && c.op != Operator::NE))

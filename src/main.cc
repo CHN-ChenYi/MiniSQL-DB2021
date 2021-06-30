@@ -6,6 +6,7 @@
 
 #include "DataStructure.hpp"
 #include "Interpreter.hpp"
+#include "IndexManager.hpp"
 
 volatile std::sig_atomic_t interrupt = 0;
 
@@ -19,6 +20,8 @@ int main(int argc, char **argv) {
 
   if (!std::filesystem::exists(CommonPathPrefix))
     std::filesystem::create_directory(CommonPathPrefix);
+  
+  index_manager.Init();
 
   std::ios_base::sync_with_stdio(false);
   try {

@@ -327,7 +327,7 @@ size_t getBplus::findLeaf(SqlValue val) {
     #ifdef _indexDEBUG
     cout << "reach Node: " << block_id_ << " " << Node_.elem[i].val.String << " " << Node_.pos[i].block_id << endl;
     #endif
-    Next_blk = Node_.pos[i-1].block_id;
+    Next_blk = Node_.pos[i].block_id;
     switchToBlock(Next_blk);
     }
     #ifdef _indexDEBUG
@@ -839,7 +839,7 @@ vector<Tuple> IndexManager::SelectRecord(const Table &table,
     cout << "searching good conditions" << endl;
     #endif
     for(i; i<conditions.size();i++){
-        if(index_blocks.contains(conditions[i].attribute)){
+        if(table.indexes.contains(conditions[i].attribute)){
             good.push_back(conditions[i]);
         }
     }
