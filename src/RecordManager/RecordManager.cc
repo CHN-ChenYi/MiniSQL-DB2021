@@ -107,6 +107,31 @@ const Tuple &RecordAccessProxy::extractData() {
   return tuple_;
 }
 
+const Tuple &RecordAccessProxy::extractData(const char *data, Tuple &tuple) {
+  assert(isCurrentSlotValid());
+  const char *tmp = data + 1;
+  for (auto &v : tuple.values) {
+    switch (v.type) {
+      case static_cast<SqlValueType>(SqlValueTypeBase::Integer):
+        memcpy(&v.val.Integer, tmp, sizeof(v.val.Integer));
+        tmp += sizeof(v.val.Integer);
+        break;
+      case static_cast<SqlValueType>(SqlValueTypeBase::Float):
+        memcpy(&v.val.Float, tmp, sizeof(v.val.Float));
+        tmp += sizeof(v.val.Float);
+        break;
+      default: {
+        size_t len =
+            v.type - static_cast<SqlValueType>(SqlValueTypeBase::String);
+        memcpy(v.val.String, tmp, len);
+        tmp += len;
+        break;
+      }
+    }
+  }
+  return tuple;
+}
+
 char *RecordAccessProxy::getRawData() { return data_ + 1; }
 
 Position RecordAccessProxy::extractPostion() {
@@ -418,6 +443,22 @@ vector<Tuple> RecordManager::selectRecord(const Table &table,
     if (checkRecordSatisfyCondition(conds_, rap.getRawData()))
       res.push_back(rap.extractData());
   } while (rap.next());
+  return res;
+}
+
+vector<Tuple> RecordManager::selectRecordFromPosition(
+    const Table &table, const vector<Position> &pos,
+    const vector<Condition> &conds) {
+  vector<Tuple> res;
+  Tuple tmp = table.makeEmptyTuple();
+  checkTableName(table);
+  checkConditionValid(table, conds);
+  auto conds_ = convertConditions(table, conds);
+  for (auto &p : pos) {
+    auto data = buffer_manager.Read(p.block_id)->val_ + p.offset;
+    if (checkRecordSatisfyCondition(conds_, data + 1 /* skip tag byte */))
+      res.push_back(RecordAccessProxy::extractData(data, tmp));
+  }
   return res;
 }
 

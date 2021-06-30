@@ -40,6 +40,7 @@ struct RecordAccessProxy {
   void newBlock();
   bool next();
   const Tuple& extractData();
+  static const Tuple& extractData(const char* data, Tuple& tuple);
   char* getRawData();
   Position extractPostion();
   void deleteRecord();
@@ -73,6 +74,9 @@ class RecordManager {
   vector<Tuple> selectAllRecords(const Table& table);
   vector<Tuple> selectRecord(const Table& table,
                              const vector<Condition>& conds);
+  vector<Tuple> selectRecordFromPosition(const Table& table,
+                                         const vector<Position>& pos,
+                                         const vector<Condition>& conds);
   size_t deleteRecord(const Table& table, const vector<Condition>& conds);
   size_t deleteAllRecords(const Table& table);
   RecordAccessProxy getIterator(const Table& table);
