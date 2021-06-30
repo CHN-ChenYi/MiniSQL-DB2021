@@ -70,6 +70,11 @@ class Interpreter {
   std::filesystem::path cur_dir = "";
   size_t affected = 0;
 
+  Tuple tp;
+  string last_insert_table_name;
+  const Table *last_table;
+  vector<tuple<const char *, size_t, size_t>> need_unique;
+
   void cleanAffected() { affected = 0; }
   void addAffected(const size_t &cnt) { affected += cnt; }
   void showAffected(size_t cnt);

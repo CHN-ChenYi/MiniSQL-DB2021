@@ -536,6 +536,7 @@ void Interpreter::parseDropTable() {
   cout << "DEBUG: drop a table named `" << table_name.sv << "`" << endl;
 #endif
 
+  last_insert_table_name.clear();
   DropTable(string(table_name.sv));
 }
 
@@ -688,10 +689,6 @@ void Interpreter::parseDeleteStat() {
 
 void Interpreter::parseInsertStat() {
   bool not_changed;
-  static Tuple tp;
-  static string last_insert_table_name;
-  const static Table *last_table;
-  static vector<tuple<const char *, size_t, size_t>> need_unique;
   expect("insert"sv);
   expect("into"sv);
   parseId();
@@ -699,7 +696,7 @@ void Interpreter::parseInsertStat() {
     not_changed = true;
   else {
     not_changed = false;
-    last_insert_table_name = string(cur_tok.sv);
+    last_insert_table_name.assign(cur_tok.sv);
   }
   table_name = cur_tok;
   expect("values"sv);

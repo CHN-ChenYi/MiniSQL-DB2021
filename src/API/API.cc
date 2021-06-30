@@ -12,8 +12,9 @@ bool CreateTable(
   catalog_manager.CreateTable(table_name, attributes);
   if (!record_manager.createTable(catalog_manager.TableInfo(table_name)))
     return false;
-  // if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
-  // return false;
+  if (!index_manager.PrimaryKeyIndex(catalog_manager.TableInfo(table_name)))
+    return false;
+  return true;
 }
 
 bool DropTable(const string &table_name) {
@@ -35,7 +36,9 @@ bool CreateIndex(const string &table_name, const string &index_name,
 
 bool DropIndex(const string &table_name, const string &index_name) {
   catalog_manager.DropIndex(table_name, index_name);
-  if (!index_manager.DropIndex(index_name)) return false;
+  if (!index_manager.DropIndex(catalog_manager.TableInfo(table_name),
+                               index_name))
+    return false;
   return true;
 }
 
